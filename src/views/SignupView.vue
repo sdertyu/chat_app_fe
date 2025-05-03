@@ -40,23 +40,18 @@
                     </Message>
                 </div>
                 <div class="mb-3">
-                    <InputText name="lastName" type="text" placeholder="Tên" fluid
+                    <InputText name="firstName" type="text" placeholder="Tên" fluid
                         :formControl="{ validateOnValueUpdate: true }" />
-                    <Message v-if="$form.lastName?.invalid" severity="error" size="small" variant="simple">
-                        {{ $form.lastName.error.message }}
+                    <Message v-if="$form.firstName?.invalid" severity="error" size="small" variant="simple">
+                        {{ $form.firstName.error.message }}
                     </Message>
                 </div>
-                <FileUpload name="avatar" url="/api/upload" @upload="onAdvancedUpload($event)" 
-                    accept="image/*" :maxFileSize="1000000">
-                    <template #empty>
-                        <span>Drag and drop files to here to upload.</span>
-                    </template>
-                </FileUpload>
-
+                <input type="file" id="file" name="file" @change="onAdvancedUpload" class="hidden" accept="image/*" />
                 <div class="d-flex justify-content-center"><Button type="submit" class="px-5" severity="primary"
                         label="Submit" /></div>
 
             </Form>
+
             <p class="text-center mt-3">Chưa có tài khoản, <router-link to="/login">Đăng nhập</router-link></p>
         </div>
     </div>
@@ -70,8 +65,7 @@ import { Form } from '@primevue/forms';
 import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
 import Button from 'primevue/button';
-import Toast from 'primevue/toast';
-import FileUpload from 'primevue/fileupload';
+import axios from 'axios';
 
 interface FormValues {
     username: string;
@@ -91,10 +85,6 @@ interface ResolverResult {
     errors: FormErrors;
 }
 
-interface SubmitEvent {
-    valid: boolean;
-    values?: FormValues;
-}
 
 const toast = useToast();
 
@@ -125,23 +115,55 @@ const resolver = (e: { values: Record<string, any> }): ResolverResult => {
 };
 
 
-const onFormSubmit = (event: { valid: boolean; values?: Record<string, any> }) => {
+const onFormSubmit = (event: any) => {
     if (event.valid) {
-        const values = event.values as FormValues;
+        console.log(event);
+        const formData = new FormData();
+        const values = event.states;
+        formData.append('email', values.username.value);
+        formData.append('password', values.password.value);
+        formData.append('phone', values.phone.value);
+        formData.append('firstName', values.firstName.value);
+        formData.append('lastName', values.lastName.value);
+        formData.append('middleName', values.middleName.value);
+        // formData.append('file', initialValues.value.avatar as File); // Cast to any to avoid type error
 
-        toast.add({
-            severity: 'success',
-            summary: 'Form is submitted.',
-            life: 3000
-        });
+        if (initialValues.value.avatar) {
+            formData.append('file', initialValues.value.avatar);
+        }
+        for (const [key, value] of formData.entries()) {
+            console.log(`${key}:`, value);
+        }
 
-        console.log('Form values:', values);
+
+        axios.post('http://localhost:3000/auth/register', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        })
+            .then((response) => {
+                if (response.status === 201) {
+                    // console.log(response.data.access_token);
+                    // console.log(response.data);
+                    // toast.add({ severity: 'success', summary: 'Success', detail: 'Registration successful.' });
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                toast.add({ severity: 'error', summary: 'Error', detail: 'Registration failed.' });
+            });
+    } else {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Please fill in all required fields.' });
     }
 };
 
-const onAdvancedUpload = (event: { files: File | File[] }) => {
-    const files = event.files as File[];
-    initialValues.value.avatar = files[0] || null; // Assuming you want to store the first file
+const onAdvancedUpload = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const files = target.files?.[0];
+
+    if (files) {
+        initialValues.value.avatar = files;
+    }
 };
 
 </script>

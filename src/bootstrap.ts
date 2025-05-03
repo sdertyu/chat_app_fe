@@ -1,15 +1,12 @@
-// import * as bootstrap from '';
+import axios from './plugins/axios'
+import axios_auth from './plugins/axios_auth'
 
-// import 'bootstrap/dist/css/bootstrap.min.css'; // nếu cần style
+declare global {
+  interface Window {
+    axios: any
+    axios_auth: any
+  }
+}
 
-// declare global {
-//     interface Window {
-//         bootstrap: typeof import('bootstrap');
-//         axios: any;
-//         toastSuccess: any;
-//         toastError: any;
-//         useGlobalStore: any;
-//     }
-// }
-
-// window.bootstrap = bootstrap;
+window.axios = axios
+window.axios_auth = axios_auth

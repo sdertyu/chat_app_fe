@@ -1,6 +1,5 @@
 <template>
     <div class="d-flex align-items-center justify-content-center" style="height: 100vh;">
-
         <div class="card p-4 shadow-lg bg-white rounded-md" style="width: 50%">
             <h2 class="text-center">Đăng nhập</h2>
             <Form v-slot="$form" :initialValues="initialValues" :resolver="resolver" :validateOnValueUpdate="false"
@@ -35,8 +34,7 @@ import { Form } from '@primevue/forms';
 import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
 import Button from 'primevue/button';
-import Toast from 'primevue/toast';
-import axios from 'axios';
+import axios_auth from '@/plugins/axios_auth';
 
 interface FormValues {
     username: string;
@@ -49,11 +47,6 @@ interface FormErrors {
 
 interface ResolverResult {
     errors: FormErrors;
-}
-
-interface SubmitEvent {
-    valid: boolean;
-    values: FormValues;
 }
 
 const toast = useToast();
@@ -81,26 +74,35 @@ const resolver = (e: { values: Record<string, any> }): ResolverResult => {
 };
 
 
-const onFormSubmit = (event: any) => {
+const onFormSubmit = async (event: any) => {
     if (event.valid) {
         const formData = new FormData();
         formData.append('email', event.states.username.value);
         formData.append('password', event.states.password.value);
-        axios.post('http://localhost:3000/auth/login', formData, {
-            headers: {
-                'Content-Type': 'application/json'
+        try {
+            const login = await axios_auth.post('auth/login', formData)
+            if (login.status === 201) {
+                toast.add({ severity: 'info', summary: 'Info', detail: 'Message Content', life: 3000 });
+                toast.add({ severity: 'success', summary: 'Thành công', detail: 'Đăng nhập thành công', life: 3000 });
             }
-        })
-            .then((response) => {
-                if (response.status === 201) {
-                    console.log(response.data.access_token);
-                    console.log(response.data);
-                }
-            })
-            .catch((error) => {
-                console.error(error);
-            });
+        } catch (error: any) {
+            console.log(error.response);
+            console.log(error.response.data.message);
+            if (error.response) {
+                const errorMessage = error.response.data.message || 'Đăng nhập thất bại';
+                toast.add({ severity: 'error', summary: 'Lỗi', detail: errorMessage, life: 3000 });
+            } else {
+                toast.add({ severity: 'error', summary: 'Lỗi', detail: 'Đã xảy ra lỗi không xác định', life: 3000 });
+            }
+        }
+
     }
 };
 
 </script>
+
+<style scoped>
+.p-toast {
+    z-index: 9999 !important;
+}
+</style>
