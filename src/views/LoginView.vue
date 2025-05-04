@@ -35,6 +35,7 @@ import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
 import Button from 'primevue/button';
 import axios_auth from '@/plugins/axios_auth';
+import router from '@/router';
 
 interface FormValues {
     username: string;
@@ -82,8 +83,8 @@ const onFormSubmit = async (event: any) => {
         try {
             const login = await axios_auth.post('auth/login', formData)
             if (login.status === 201) {
-                toast.add({ severity: 'info', summary: 'Info', detail: 'Message Content', life: 3000 });
-                toast.add({ severity: 'success', summary: 'Thành công', detail: 'Đăng nhập thành công', life: 3000 });
+                console.log(login.data);
+                router.push('/');
             }
         } catch (error: any) {
             console.log(error.response);
