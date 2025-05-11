@@ -1,5 +1,6 @@
 <template>
     <div class="d-flex align-items-center justify-content-center" style="height: 100vh;">
+        <Toast />
 
         <div class="card p-4 shadow-lg bg-white rounded-md" style="width: 50%">
             <h2 class="text-center">Đăng ký</h2>
@@ -65,7 +66,7 @@ import { Form } from '@primevue/forms';
 import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
 import Button from 'primevue/button';
-import axios from 'axios';
+import axios from '@/plugins/axios_auth';
 
 interface FormValues {
     username: string;
@@ -136,16 +137,19 @@ const onFormSubmit = (event: any) => {
         }
 
 
-        axios.post('http://localhost:3000/auth/register', formData, {
+        axios.post('auth/register', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
         })
             .then((response) => {
                 if (response.status === 201) {
-                    // console.log(response.data.access_token);
-                    // console.log(response.data);
-                    // toast.add({ severity: 'success', summary: 'Success', detail: 'Registration successful.' });
+                    toast.add({ severity: 'success', summary: 'Success', detail: 'Registration successful.' });
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    toast.add({ severity: 'error', summary: 'Error', detail: 'Registration failed.' });
                 }
             })
             .catch((error) => {

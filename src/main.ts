@@ -2,7 +2,7 @@ import './assets/main.css'
 import 'bootstrap/dist/css/bootstrap.css'
 // import 'primevue/resources/themes/saga-blue/theme.css'; // Hoặc theme bạn đang sử dụng
 // import 'primevue/resources/primevue.min.css';
-// import 'primeicons/primeicons.css';
+import 'primeicons/primeicons.css'
 import PrimeVue from 'primevue/config'
 
 import { createApp } from 'vue'
@@ -11,7 +11,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import DialogService from 'primevue/dialogservice'
-import ToastService from 'primevue/toastservice';
+import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
 import Aura from '@primeuix/themes/aura'
 
@@ -31,7 +31,7 @@ app.use(PrimeVue, {
 })
 
 app.use(ConfirmationService)
-app.use(ToastService);
+app.use(ToastService)
 app.use(DialogService)
 
 app.mount('#app')
