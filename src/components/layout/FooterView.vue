@@ -1,5 +1,5 @@
 <template>
-    <div class="chat-input">
+    <div class="chat-input mb-2">
         <div class="input-actions">
             <Button icon="pi pi-smile" rounded text aria-label="Emoji" />
             <Button icon="pi pi-paperclip" rounded text aria-label="Attach file" />
@@ -33,6 +33,7 @@ defineEmits<{
     gap: 8px;
     padding: 16px;
     border-top: 1px solid #e9e9e9;
+
 }
 
 .input-actions {

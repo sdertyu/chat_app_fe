@@ -14,13 +14,13 @@
                     <div v-if="message.sender === 'system'" class="system-message">
                         <Avatar label="OS" shape="circle" size="small" />
                         <div class="message-bubble system">
-                            {{ message.text }}
+                            {{ message.content }}
                         </div>
                     </div>
                     <div v-else class="user-message" :class="{ 'own-message': message.sender === 'self' }">
                         <Avatar v-if="message.sender !== 'self'" :image="message.avatar" shape="circle" />
                         <div class="message-bubble" :class="{ 'own': message.sender === 'self' }">
-                            {{ message.text }}
+                            {{ message.content }}
                         </div>
                     </div>
                 </div>
@@ -45,11 +45,13 @@ import HeaderView from '@/components/layout/HeaderView.vue';
 import FooterView from '@/components/layout/FooterView.vue';
 import SidebarProfile from '@/components/layout/SidebarProfile.vue';
 import Avatar from 'primevue/avatar';
+import axios from '@/plugins/axios';
+import socket from '@/plugins/socket';
 
 // Types
 export interface Message {
     sender: 'self' | 'other' | 'system';
-    text: string;
+    content: string;
     avatar?: string;
 }
 
@@ -82,6 +84,10 @@ const selectedChatId = ref(1);
 const newMessage = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
 
+// localStorage
+const userId = localStorage.getItem('userId');
+const userName = localStorage.getItem('userName');
+
 const settings = ref<Settings>({
     notifications: true,
     sound: false,
@@ -89,71 +95,71 @@ const settings = ref<Settings>({
 });
 
 // Sample data
-const chats = ref<Chat[]>([
-    {
-        id: 1,
-        name: 'PrimeTek Team',
-        avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-        lastMessage: "Let's implement PrimeVue. Elevatin...",
-        lastMessageTime: '11:15',
-        unreadCount: 0,
-        messages: [
-            { sender: 'system', text: "Awesome! What's the standout feature?" },
-            {
-                sender: 'other',
-                avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-                text: "PrimeVue rocks! Simplifies UI dev with versatile components."
-            },
-            {
-                sender: 'other',
-                avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-                text: "Intriguing! Tell us more about its impact."
-            },
-            {
-                sender: 'other',
-                avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-                text: "It's design-neutral and compatible with Tailwind. Features accessible, high-grade components!"
-            },
-        ],
-        // imagePreview: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-htel9z5kGfF2pD2zHJTV8zRXC3PI4z.png'
-    },
-    {
-        id: 2,
-        name: 'Cody Fisher',
-        avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-        lastMessage: "Hey there! I've heard about...",
-        lastMessageTime: '12:30',
-        unreadCount: 8,
-        messages: []
-    },
-    {
-        id: 3,
-        name: 'Jerome Bell',
-        avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-        lastMessage: "PrimeVue's...",
-        lastMessageTime: '11:15',
-        unreadCount: 4,
-        messages: []
-    },
-    {
-        id: 4,
-        name: 'Robert Fox',
-        avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-        lastMessage: "Interesting! PrimeVue sounds...",
-        lastMessageTime: '11:15',
-        unreadCount: 0,
-        messages: []
-    },
-    {
-        id: 5,
-        name: 'Esther Howard',
-        avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-        lastMessage: "Quick one, team! Anyone...",
-        lastMessageTime: '11:15',
-        unreadCount: 9,
-        messages: []
-    }
-]);
+const chats = ref<Chat[]>([]);
+//     {
+//         id: 1,
+//         name: 'PrimeTek Team',
+//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+//         lastMessage: "Let's implement PrimeVue. Elevatin...",
+//         lastMessageTime: '11:15',
+//         unreadCount: 0,
+//         messages: [
+//             { sender: 'system', content: "Awesome! What's the standout feature?" },
+//             {
+//                 sender: 'other',
+//                 avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+//                 content: "PrimeVue rocks! Simplifies UI dev with versatile components."
+//             },
+//             {
+//                 sender: 'other',
+//                 avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+//                 content: "Intriguing! Tell us more about its impact."
+//             },
+//             {
+//                 sender: 'other',
+//                 avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+//                 content: "It's design-neutral and compatible with Tailwind. Features accessible, high-grade components!"
+//             },
+//         ],
+//         // imagePreview: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-htel9z5kGfF2pD2zHJTV8zRXC3PI4z.png'
+//     },
+//     {
+//         id: 2,
+//         name: 'Cody Fisher',
+//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+//         lastMessage: "Hey there! I've heard about...",
+//         lastMessageTime: '12:30',
+//         unreadCount: 8,
+//         messages: []
+//     },
+//     {
+//         id: 3,
+//         name: 'Jerome Bell',
+//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+//         lastMessage: "PrimeVue's...",
+//         lastMessageTime: '11:15',
+//         unreadCount: 4,
+//         messages: []
+//     },
+//     {
+//         id: 4,
+//         name: 'Robert Fox',
+//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+//         lastMessage: "Interesting! PrimeVue sounds...",
+//         lastMessageTime: '11:15',
+//         unreadCount: 0,
+//         messages: []
+//     },
+//     {
+//         id: 5,
+//         name: 'Esther Howard',
+//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+//         lastMessage: "Quick one, team! Anyone...",
+//         lastMessageTime: '11:15',
+//         unreadCount: 9,
+//         messages: []
+//     }
+// ]);
 
 const members = ref<Member[]>([
     { id: 1, name: 'Robin Jonas', avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg' },
@@ -165,7 +171,7 @@ const members = ref<Member[]>([
 
 // Computed properties
 const currentChat = computed((): Chat => {
-    return chats.value.find(chat => chat.id === selectedChatId.value) || chats.value[0];
+    return chats.value.find(chat => chat.id === selectedChatId.value) || chats.value[0] || [];
 });
 
 // Methods
@@ -186,28 +192,50 @@ const selectChat = (chatId: number): void => {
 const sendMessage = (): void => {
     if (!newMessage.value.trim()) return;
 
-    const chat = chats.value.find(c => c.id === selectedChatId.value);
-    if (chat) {
-        chat.messages.push({
-            sender: 'self',
-            text: newMessage.value
-        });
-        chat.lastMessage = newMessage.value;
-        chat.lastMessageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        newMessage.value = '';
+    socket.emit('sendMessage', {
+        senderId: userId,
+        content: newMessage.value,
+        conversationId: selectedChatId.value
+    });
 
-        // Simulate response after a delay
-        setTimeout(() => {
-            chat.messages.push({
-                sender: 'other',
-                avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-                text: "Thanks for your message! I'll get back to you soon."
-            });
-            scrollToBottom();
-        }, 1000);
-    }
+    // Simulate sending message
+    // const chat = chats.value.find(c => c.id === selectedChatId.value);
+    // if (chat) {
+    //     chat.messages.push({
+    //         sender: 'self',
+    //         content: newMessage.value
+    //     });
+    //     chat.lastMessage = newMessage.value;
+    //     chat.lastMessageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    //     chat.unreadCount += 1;
+    //     newMessage.value = '';
+    // }
+
+
+
+    // const chat = chats.value.find(c => c.id === selectedChatId.value);
+    // if (chat) {
+    //     chat.messages.push({
+    //         sender: 'self',
+    //         content: newMessage.value
+    //     });
+    //     chat.lastMessage = newMessage.value;
+    //     chat.lastMessageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    //     newMessage.value = '';
+
+    //     // Simulate response after a delay
+    //     setTimeout(() => {
+    //         chat.messages.push({
+    //             sender: 'other',
+    //             avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+    //             content: "Thanks for your message! I'll get back to you soon."
+    //         });
+    //         scrollToBottom();
+    //     }, 1000);
+    // }
 
     nextTick(() => {
+        newMessage.value = '';
         scrollToBottom();
     });
 };
@@ -218,9 +246,59 @@ const scrollToBottom = (): void => {
     }
 };
 
+const getListChat = async (): Promise<void> => {
+    try {
+        const response = await axios.get('/chat/conversations');
+        if (response.status === 200) {
+            chats.value = response.data.map((chat: any) => ({
+                id: chat.id,
+                name: chat.name,
+                avatar: chat.avatar,
+                lastMessage: chat.messages[0].content,
+                lastMessageTime: new Date(chat.messages[0].createdAt)
+                    .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                unreadCount: 1,
+                messages: chat.messages.map((message: any) => ({
+                    sender: message.senderId == userId ? 'self' : 'other',
+                    content: message.content,
+                    avatar: ""
+                })),
+            }));
+        }
+    } catch (error) {
+        console.error('Error fetching chat list:', error);
+        chats.value = [];
+    }
+};
+
 // Lifecycle hooks
 onMounted(() => {
+    getListChat();
     scrollToBottom();
+
+    socket.on('connect', () => {
+        socket.emit('join_room', { conversationId: String(selectedChatId.value) });
+    });
+
+    socket.on('receive_message', (message) => {
+        const chat = chats.value.find(c => c.id == message.conversationId);
+        if (chat) {
+            chat.messages.push({
+                sender: message.senderId == userId ? 'self' : 'other',
+                content: message.content,
+                avatar: ""
+            });
+
+            // Nếu là hội thoại hiện tại thì scroll xuống
+            if (selectedChatId.value === message.conversationId) {
+                nextTick(() => {
+                    scrollToBottom();
+                });
+            }
+        }
+        console.log(message);
+    });
+
 });
 </script>
 

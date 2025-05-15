@@ -83,7 +83,9 @@ const onFormSubmit = async (event: any) => {
         try {
             const login = await axios_auth.post('auth/login', formData)
             if (login.status === 201) {
-                console.log(login.data);
+                console.log(login.data.user);
+                localStorage.setItem('userId', login.data.user.id);
+                localStorage.setItem('userName', login.data.user.lastName);
                 router.push('/');
             }
         } catch (error: any) {

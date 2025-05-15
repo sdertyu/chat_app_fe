@@ -12,7 +12,7 @@
                 <span class="p-input-icon-left w-full">
                     <!-- <i class="pi pi-search" /> -->
                     <InputText :value="searchQuery" @input="$emit('update:searchQuery', $event.target.value)"
-                        placeholder="Search" class="w-full" />
+                        placeholder="Search" class="w-100" />
                 </span>
             </div>
             <div class="chat-tabs">
@@ -99,6 +99,7 @@ const filteredChats = computed((): Chat[] => {
     overflow-y: auto;
     padding: 16px;
 }
+
 
 .sidebar-header {
     display: flex;
