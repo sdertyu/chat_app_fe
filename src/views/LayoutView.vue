@@ -22,9 +22,13 @@
                         <div class="message-bubble" :class="{ 'own': message.sender === 'self' }">
                             {{ message.content }}
                         </div>
-                        <div>
-                            {{ message.readUser }}
-                        </div>
+
+                    </div>
+                    <div v-if="message.readUser" class="read-user" style="align-content: flex-end;">
+                        <span v-for="(user, index) in message.readUser" :key="index">
+                            <Avatar image="https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg"
+                                shape="circle" size="small" />
+                        </span>
                     </div>
                 </div>
                 <div class="chat-image-preview" v-if="currentChat.imagePreview">
@@ -32,7 +36,6 @@
                 </div>
             </div>
 
-            {{ isTyping }}
             <div v-if="isTyping" class="typing-indicator">
                 Ai đó đang nhập...
             </div>
@@ -61,6 +64,7 @@ import socket from '@/plugins/socket';
 export interface Message {
     id: number;
     sender: 'self' | 'other' | 'system';
+    senderId: number;
     content: string;
     avatar?: string;
     readUser?: []
@@ -92,7 +96,7 @@ export interface Settings {
 
 // State
 const searchQuery = ref('');
-const selectedChatId = ref(1);
+const selectedChatId = ref();
 const newMessage = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
 const isTyping = ref(false);
@@ -117,70 +121,6 @@ const handleTyping = (): void => {
 
 // Sample data
 const chats = ref<Chat[]>([]);
-//     {
-//         id: 1,
-//         name: 'PrimeTek Team',
-//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-//         lastMessage: "Let's implement PrimeVue. Elevatin...",
-//         lastMessageTime: '11:15',
-//         unreadCount: 0,
-//         messages: [
-//             { sender: 'system', content: "Awesome! What's the standout feature?" },
-//             {
-//                 sender: 'other',
-//                 avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-//                 content: "PrimeVue rocks! Simplifies UI dev with versatile components."
-//             },
-//             {
-//                 sender: 'other',
-//                 avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-//                 content: "Intriguing! Tell us more about its impact."
-//             },
-//             {
-//                 sender: 'other',
-//                 avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-//                 content: "It's design-neutral and compatible with Tailwind. Features accessible, high-grade components!"
-//             },
-//         ],
-//         // imagePreview: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-htel9z5kGfF2pD2zHJTV8zRXC3PI4z.png'
-//     },
-//     {
-//         id: 2,
-//         name: 'Cody Fisher',
-//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-//         lastMessage: "Hey there! I've heard about...",
-//         lastMessageTime: '12:30',
-//         unreadCount: 8,
-//         messages: []
-//     },
-//     {
-//         id: 3,
-//         name: 'Jerome Bell',
-//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-//         lastMessage: "PrimeVue's...",
-//         lastMessageTime: '11:15',
-//         unreadCount: 4,
-//         messages: []
-//     },
-//     {
-//         id: 4,
-//         name: 'Robert Fox',
-//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-//         lastMessage: "Interesting! PrimeVue sounds...",
-//         lastMessageTime: '11:15',
-//         unreadCount: 0,
-//         messages: []
-//     },
-//     {
-//         id: 5,
-//         name: 'Esther Howard',
-//         avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-//         lastMessage: "Quick one, team! Anyone...",
-//         lastMessageTime: '11:15',
-//         unreadCount: 9,
-//         messages: []
-//     }
-// ]);
 
 const members = ref<Member[]>([
     // { id: 1, name: 'Robin Jonas', avatar: 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg' },
@@ -192,16 +132,26 @@ const members = ref<Member[]>([
 
 // Computed properties
 const currentChat = computed((): Chat => {
+
     return chats.value.find(chat => chat.id === selectedChatId.value) || chats.value[0] || [];
 });
 
-watch(selectedChatId, (newId) => {
+const join_room = (newId: Number) => {
     if (socket.connected) {
-        let lastMessageId = currentChat.value.messages.length > 0
-            ? currentChat.value.messages[currentChat.value.messages.length - 1].id
-            : null;
-        socket.emit('join_room', { conversationId: String(newId), lastMessageId: Number(lastMessageId), senderId: Number(userId) });
+        let lastMessageId = null;
+        let chatLength = currentChat.value.messages.length;
+        for (let i = chatLength - 1; i >= 0; i--) {
+            if (currentChat.value.messages[i].sender != "self") {
+                lastMessageId = currentChat.value.messages[i].id;
+                break;
+            }
+        }
+        socket.emit('join_room', { conversationId: String(newId), lastMessageId: Number(lastMessageId), userId: Number(userId) });
     }
+}
+
+watch(selectedChatId, (newId) => {
+    join_room(newId);
 });
 
 // Methods
@@ -245,34 +195,62 @@ const getListChat = async (): Promise<void> => {
     try {
         const response = await axios.get('/chat/conversations');
         if (response.status === 200) {
-            chats.value = response.data.map((chat: any) => ({
-                id: chat.id,
-                name: chat.name,
-                avatar: chat.avatar || 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-                lastMessage: chat.messages?.[chat.messages.length - 1]?.content || '',
-                lastMessageTime: chat.messages?.[chat.messages.length - 1]?.createdAt
-                    ? new Date(chat.messages[chat.messages.length - 1].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : chat.createdAt
-                        ? new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        : '',
-                unreadCount: 0,
-                messages: chat.messages.map((message: any) => ({
-                    id: message.id,
-                    sender: message.senderId == userId ? 'self' : 'other',
-                    content: message.content,
-                    avatar: "https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg",
-                    readUser: chat.participants.map((user: any) => {
-                        if (user.lastReadMessageId == message.id) {
-                            return {
-                                id: user.usersId,
-                            };
-                        }
-                        return null; // hoặc undefined
+            selectedChatId.value = response.data[0].id;
+            chats.value = response.data.map((chat: any) => {
+                let readMess = [];
+                chat.participants.forEach((participant: any) => {
+                    readMess.push({
+                        userId: participant.userId,
+                        lastReadMessageId: participant.lastReadMessageId
+                    });
+                });
+                return {
+                    id: chat.id,
+                    name: chat.name,
+                    avatar: chat.avatar || 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+                    lastMessage: chat.messages?.[chat.messages.length - 1]?.content || '',
+                    lastMessageTime: chat.messages?.[chat.messages.length - 1]?.createdAt
+                        ? new Date(chat.messages[chat.messages.length - 1].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : chat.createdAt
+                            ? new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : '',
+                    unreadCount: 0,
+                    messages: chat.messages.map((message: any) => {
+                        // Tìm những người dùng đã đọc tin nhắn này
+                        // const readUsers = chat.participants
+                        //     .filter((participant: any) => {
+                        //         console.log(participant.usersId);
+                        //         // Người dùng đã đọc tin nhắn này nếu lastReadMessageId >= message.id
+                        //         return participant.usersId != Number(userId) && // Không phải người dùng hiện tại
+                        //             participant.lastReadMessageId == message.id;
+                        //     })
+                        //     .map((participant: any) => ({
+                        //         userId: participant.usersId,
+                        //         // Có thể thêm thông tin khác về người dùng nếu có
+                        //     }));
+
+                        // console.log(readUsers);
+
+                        return {
+                            id: message.id,
+                            sender: message.senderId == userId ? 'self' : 'other',
+                            senderId: message.senderId,
+                            content: message.content,
+                            avatar: "https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg",
+                            readUser: chat.participants
+                                .filter((participant: any) => {
+                                    // Người dùng đã đọc tin nhắn này nếu lastReadMessageId >= message.id
+                                    return participant.usersId != Number(userId) && // Không phải người dùng hiện tại
+                                        participant.lastReadMessageId == message.id;
+                                })
+                                .map((participant: any) => ({
+                                    userId: participant.usersId,
+                                    // Có thể thêm thông tin khác về người dùng nếu có
+                                }))
+                        };
                     })
-
-                })),
-
-            }));
+                }
+            });
         }
     } catch (error) {
         console.error('Error fetching chat list:', error);
@@ -287,13 +265,13 @@ const getListChat = async (): Promise<void> => {
 };
 
 // Lifecycle hooks
-onMounted(() => {
-    getListChat();
+onMounted(async () => {
+    await getListChat();
     // scrollToBottom();
 
-    socket.on('connect', () => {
-        socket.emit('join_room', { conversationId: String(selectedChatId.value) });
-    });
+    // socket.on('connect', () => {
+    join_room(selectedChatId.value);
+    // });
 
     socket.on('receive_message', (message) => {
         const chat = chats.value.find(c => c.id == message.conversationId);
@@ -302,8 +280,8 @@ onMounted(() => {
                 id: message.id,
                 sender: message.senderId == userId ? 'self' : 'other',
                 content: message.content,
-                avatar: ""
-
+                avatar: "",
+                senderId: message.senderId,
             });
 
             // Nếu là hội thoại hiện tại thì scroll xuống
