@@ -136,23 +136,32 @@ const currentChat = computed((): Chat => {
     return chats.value.find(chat => chat.id === selectedChatId.value) || chats.value[0] || [];
 });
 
-const join_room = (newId: Number) => {
-    if (socket.connected) {
-        let lastMessageId = null;
-        let chatLength = currentChat.value.messages.length;
-        for (let i = chatLength - 1; i >= 0; i--) {
-            if (currentChat.value.messages[i].sender != "self") {
-                lastMessageId = currentChat.value.messages[i].id;
-                break;
-            }
-        }
-        socket.emit('join_room', { conversationId: String(newId), lastMessageId: Number(lastMessageId), userId: Number(userId) });
-    }
+const join_room = (conversationId: Number) => {
+    // if (socket.connected) {
+    //     let chatLength = currentChat.value.messages.length;
+    //     let lastMessageId = currentChat.value.messages[chatLength - 1]?.id || 0;
+    //     // for (let i = chatLength - 1; i >= 0; i--) {
+    //     //     if (currentChat.value.messages[i].sender != "self") {
+    //     //         lastMessageId = currentChat.value.messages[i].id;
+    //     //         break;
+    //     //     }
+    //     // }
+    //     socket.emit('join_room', { conversationId: String(newId), lastMessageId: Number(lastMessageId), userId: Number(userId) });
+    // }
+    // if (socket.connected) {
+    socket.emit('join_room', { conversationId: String(selectedChatId.value) });
+    // }
 }
 
 watch(selectedChatId, (newId) => {
     join_room(newId);
 });
+
+const join_user_room = () => {
+    if (socket.connected) {
+        socket.emit("joinUserRoom", { userId: Number(userId) });
+    }
+}
 
 // Methods
 const selectChat = (chatId: number): void => {
@@ -176,7 +185,8 @@ const sendMessage = (): void => {
         id: Number(null),
         senderId: userId,
         content: newMessage.value,
-        conversationId: selectedChatId.value
+        conversationId: selectedChatId.value,
+        createAt: null
     });
 
     nextTick(() => {
@@ -273,9 +283,16 @@ onMounted(async () => {
     join_room(selectedChatId.value);
     // });
 
+    join_user_room();
+
     socket.on('receive_message', (message) => {
         const chat = chats.value.find(c => c.id == message.conversationId);
         if (chat) {
+            if (message.senderId != userId) {
+                chat.unreadCount++;
+                chat.lastMessage = message.content;
+                chat.lastMessageTime = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
             chat.messages.push({
                 id: message.id,
                 sender: message.senderId == userId ? 'self' : 'other',
