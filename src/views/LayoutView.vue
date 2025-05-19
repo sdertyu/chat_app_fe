@@ -24,12 +24,12 @@
                         </div>
 
                     </div>
-                    <div v-if="message.readUser" class="read-user" style="align-content: flex-end;">
-                        <span v-for="(user, index) in message.readUser" :key="index">
-                            <Avatar image="https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg"
-                                shape="circle" size="small" />
+                    <div v-if="getReadersOfMessage(message.id).length > 0" class="read-user" style="text-align: right;">
+                        <span v-for="(user, index) in getReadersOfMessage(message.id)" :key="index">
+                            <Avatar :image="user.avatar" shape="circle" size="small" />
                         </span>
                     </div>
+
                 </div>
                 <div class="chat-image-preview" v-if="currentChat.imagePreview">
                     <img :src="currentChat.imagePreview" alt="Dashboard preview" class="dashboard-preview" />
@@ -67,7 +67,6 @@ export interface Message {
     senderId: number;
     content: string;
     avatar?: string;
-    readUser?: []
 }
 
 export interface Chat {
@@ -86,6 +85,7 @@ export interface Member {
     id: number;
     name: string;
     avatar: string;
+    lastMessage?: number;
 }
 
 export interface Settings {
@@ -136,25 +136,26 @@ const currentChat = computed((): Chat => {
     return chats.value.find(chat => chat.id === selectedChatId.value) || chats.value[0] || [];
 });
 
+const getReadersOfMessage = (messageId: number) => {
+    return currentChat.value?.members?.filter(member => member.lastMessage === messageId && String(member.id) != userId) || [];
+};
+
+
 const join_room = (conversationId: Number) => {
-    // if (socket.connected) {
-    //     let chatLength = currentChat.value.messages.length;
-    //     let lastMessageId = currentChat.value.messages[chatLength - 1]?.id || 0;
-    //     // for (let i = chatLength - 1; i >= 0; i--) {
-    //     //     if (currentChat.value.messages[i].sender != "self") {
-    //     //         lastMessageId = currentChat.value.messages[i].id;
-    //     //         break;
-    //     //     }
-    //     // }
-    //     socket.emit('join_room', { conversationId: String(newId), lastMessageId: Number(lastMessageId), userId: Number(userId) });
-    // }
     // if (socket.connected) {
     socket.emit('join_room', { conversationId: String(selectedChatId.value) });
     // }
 }
 
+const readMessage = (chatId: number) => {
+    let chatLength = currentChat.value.messages.length;
+    let lastMessageId = currentChat.value.messages[chatLength - 1]?.id || 0;
+    socket.emit('read_message', { conversationId: String(chatId), lastMessageId: Number(lastMessageId), userId: Number(userId) });
+}
+
 watch(selectedChatId, (newId) => {
     join_room(newId);
+    readMessage(newId);
 });
 
 const join_user_room = () => {
@@ -206,61 +207,33 @@ const getListChat = async (): Promise<void> => {
         const response = await axios.get('/chat/conversations');
         if (response.status === 200) {
             selectedChatId.value = response.data[0].id;
-            chats.value = response.data.map((chat: any) => {
-                let readMess = [];
-                chat.participants.forEach((participant: any) => {
-                    readMess.push({
-                        userId: participant.userId,
-                        lastReadMessageId: participant.lastReadMessageId
-                    });
-                });
-                return {
-                    id: chat.id,
-                    name: chat.name,
-                    avatar: chat.avatar || 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
-                    lastMessage: chat.messages?.[chat.messages.length - 1]?.content || '',
-                    lastMessageTime: chat.messages?.[chat.messages.length - 1]?.createdAt
-                        ? new Date(chat.messages[chat.messages.length - 1].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        : chat.createdAt
-                            ? new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                            : '',
-                    unreadCount: 0,
-                    messages: chat.messages.map((message: any) => {
-                        // Tìm những người dùng đã đọc tin nhắn này
-                        // const readUsers = chat.participants
-                        //     .filter((participant: any) => {
-                        //         console.log(participant.usersId);
-                        //         // Người dùng đã đọc tin nhắn này nếu lastReadMessageId >= message.id
-                        //         return participant.usersId != Number(userId) && // Không phải người dùng hiện tại
-                        //             participant.lastReadMessageId == message.id;
-                        //     })
-                        //     .map((participant: any) => ({
-                        //         userId: participant.usersId,
-                        //         // Có thể thêm thông tin khác về người dùng nếu có
-                        //     }));
+            chats.value = response.data.map((chat: any) => ({
+                id: chat.id,
+                name: chat.name,
+                avatar: chat.avatar || 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+                lastMessage: chat.messages?.[chat.messages.length - 1]?.content || '',
+                lastMessageTime: chat.messages?.[chat.messages.length - 1]?.createdAt
+                    ? new Date(chat.messages[chat.messages.length - 1].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : chat.createdAt
+                        ? new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : '',
+                unreadCount: 0,
+                messages: chat.messages.map((message: any) => ({
+                    id: message.id,
+                    sender: message.senderId == userId ? 'self' : 'other',
+                    senderId: message.senderId,
+                    content: message.content,
+                    avatar: "https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg",
 
-                        // console.log(readUsers);
+                })),
+                members: chat.participants.map((member: any) => ({
+                    id: member.usersId,
+                    name: "name",
+                    avatar: member.avatar || 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+                    lastMessage: member.lastReadMessageId || null,
+                })),
+            }))
 
-                        return {
-                            id: message.id,
-                            sender: message.senderId == userId ? 'self' : 'other',
-                            senderId: message.senderId,
-                            content: message.content,
-                            avatar: "https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg",
-                            readUser: chat.participants
-                                .filter((participant: any) => {
-                                    // Người dùng đã đọc tin nhắn này nếu lastReadMessageId >= message.id
-                                    return participant.usersId != Number(userId) && // Không phải người dùng hiện tại
-                                        participant.lastReadMessageId == message.id;
-                                })
-                                .map((participant: any) => ({
-                                    userId: participant.usersId,
-                                    // Có thể thêm thông tin khác về người dùng nếu có
-                                }))
-                        };
-                    })
-                }
-            });
         }
     } catch (error) {
         console.error('Error fetching chat list:', error);
@@ -281,6 +254,7 @@ onMounted(async () => {
 
     // socket.on('connect', () => {
     join_room(selectedChatId.value);
+    readMessage(selectedChatId.value);
     // });
 
     join_user_room();
@@ -301,6 +275,7 @@ onMounted(async () => {
                 senderId: message.senderId,
             });
 
+            readMessage(selectedChatId.value);
             // Nếu là hội thoại hiện tại thì scroll xuống
             if (selectedChatId.value === message.conversationId) {
                 nextTick(() => {
@@ -312,13 +287,30 @@ onMounted(async () => {
     });
 
     socket.on('typing2', (data) => {
-        console.log("object");
+        // console.log("object");
         if (data.conversationId == selectedChatId.value && data.senderId != userId) {
             isTyping.value = true;
 
             setTimeout(() => {
                 isTyping.value = false;
             }, 3000); // tự ẩn sau 3s
+        }
+    });
+
+    socket.on('read_message', (data) => {
+        const chat = chats.value.find(c => c.id == data.conversationId);
+        // console.log(chat);
+        if (chat) {
+            const member = chat.members?.find(m => m.id == data.userId);
+            // console.log(currentChat.value?.members);
+            // console.log("f1");
+            if (member) {
+                console.log("f2");
+                member.lastMessage = data.lastMessageId;
+                nextTick(() => {
+                    scrollToBottom();
+                });
+            }
         }
     });
 
