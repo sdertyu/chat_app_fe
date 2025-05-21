@@ -147,15 +147,20 @@ const join_room = (conversationId: Number) => {
     // }
 }
 
+const leave_room = (conversationId: Number) => {
+    socket.emit('leave_room', { conversationId: String(conversationId) });
+}
+
 const readMessage = (chatId: number) => {
     let chatLength = currentChat.value.messages.length;
     let lastMessageId = currentChat.value.messages[chatLength - 1]?.id || 0;
     socket.emit('read_message', { conversationId: String(chatId), lastMessageId: Number(lastMessageId), userId: Number(userId) });
 }
 
-watch(selectedChatId, (newId) => {
+watch(selectedChatId, (newId, oldVal) => {
     join_room(newId);
     readMessage(newId);
+    leave_room(oldVal);
 });
 
 const join_user_room = () => {
@@ -217,7 +222,7 @@ const getListChat = async (): Promise<void> => {
                     : chat.createdAt
                         ? new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         : '',
-                unreadCount: 0,
+                unreadCount: chat.messages?.[chat.messages.length - 1]?.id - chat.participants.filter((member: any) => member.usersId == userId)[0].lastReadMessageId,
                 messages: chat.messages.map((message: any) => ({
                     id: message.id,
                     sender: message.senderId == userId ? 'self' : 'other',
@@ -247,19 +252,8 @@ const getListChat = async (): Promise<void> => {
     }
 };
 
-// Lifecycle hooks
-onMounted(async () => {
-    await getListChat();
-    // scrollToBottom();
-
-    // socket.on('connect', () => {
-    join_room(selectedChatId.value);
-    readMessage(selectedChatId.value);
-    // });
-
-    join_user_room();
-
-    socket.on('receive_message', (message) => {
+const receive_message = () => {
+    socket.on('receive_message', async (message) => {
         const chat = chats.value.find(c => c.id == message.conversationId);
         if (chat) {
             if (message.senderId != userId) {
@@ -276,17 +270,57 @@ onMounted(async () => {
             });
 
             readMessage(selectedChatId.value);
+            isTyping.value = false;
             // Nếu là hội thoại hiện tại thì scroll xuống
             if (selectedChatId.value === message.conversationId) {
                 nextTick(() => {
                     scrollToBottom();
                 });
             }
+        } else {
+            try {
+                const newChat = await axios.get(`/chat/conversations/${message.conversationId}`);
+                if (newChat.status === 200) {
+                    const chatData = newChat.data;
+                    chats.value.push({
+                        id: chatData.id,
+                        name: chatData.name,
+                        avatar: chatData.avatar || 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+                        lastMessage: chatData.messages?.[chatData.messages.length - 1]?.content || '',
+                        lastMessageTime: chatData.messages?.[chatData.messages.length - 1]?.createdAt
+                            ? new Date(chatData.messages[chatData.messages.length - 1].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : chatData.createdAt
+                                ? new Date(chatData.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                : '',
+                        unreadCount: 0,
+                        messages: chatData.messages.map((message: any) => ({
+                            id: message.id,
+                            sender: message.senderId == userId ? 'self' : 'other',
+                            senderId: message.senderId,
+                            content: message.content,
+                            avatar: "https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg",
+
+                        })),
+                        members: chatData.participants.map((member: any) => ({
+                            id: member.usersId,
+                            name: "name",
+                            avatar: member.avatar || 'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+                            lastMessage: member.lastReadMessageId || null,
+                        })),
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching chat:', error);
+            }
+
         }
         console.log(message);
     });
+};
 
-    socket.on('typing2', (data) => {
+
+const typing = () => {
+    socket.on('typing', (data) => {
         // console.log("object");
         if (data.conversationId == selectedChatId.value && data.senderId != userId) {
             isTyping.value = true;
@@ -296,7 +330,9 @@ onMounted(async () => {
             }, 3000); // tự ẩn sau 3s
         }
     });
+};
 
+const read_message = () => {
     socket.on('read_message', (data) => {
         const chat = chats.value.find(c => c.id == data.conversationId);
         // console.log(chat);
@@ -305,7 +341,7 @@ onMounted(async () => {
             // console.log(currentChat.value?.members);
             // console.log("f1");
             if (member) {
-                console.log("f2");
+                // console.log("f2");
                 member.lastMessage = data.lastMessageId;
                 nextTick(() => {
                     scrollToBottom();
@@ -313,12 +349,35 @@ onMounted(async () => {
             }
         }
     });
+};
+
+// Lifecycle hooks
+onMounted(async () => {
+    await getListChat();
+    // scrollToBottom();
+
+    // socket.on('connect', () => {
+    join_room(selectedChatId.value);
+    readMessage(selectedChatId.value);
+    // });
+
+    join_user_room();
+
+    receive_message();
+    typing();
+
+    read_message();
+
 
 });
 
 onBeforeUnmount(() => {
     socket.off('receive_message');
     socket.off('connect');
+    socket.off('typing2');
+    socket.off('read_message');
+    // socket.emit('leave_room', { conversationId: String(selectedChatId.value) });
+    socket.emit('leave_user_room', { userId: Number(userId) });
 });
 </script>
 
