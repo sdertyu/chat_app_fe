@@ -1,107 +1,128 @@
 <template>
-    <div class="d-flex align-items-center justify-content-center" style="height: 100vh;">
-        <div class="card p-4 shadow-lg bg-white rounded-md" style="width: 50%">
-            <h2 class="text-center">Đăng nhập</h2>
-            <Form v-slot="$form" :initialValues="initialValues" :resolver="resolver" :validateOnValueUpdate="false"
-                :validateOnBlur="true" @submit="onFormSubmit" class="flex flex-col gap-4 w-full sm:w-56">
-                <div class="mb-3">
-                    <InputText name="username" type="email" placeholder="Email" fluid />
-                    <Message v-if="$form.username?.invalid" severity="error" size="small" variant="simple">
-                        {{ $form.username.error.message }}
-                    </Message>
+    <div class="flex items-center justify-center min-h-screen bg-gray-100">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Đăng nhập</h2>
+            <form @submit.prevent="onFormSubmit" class="space-y-4">
+                <div>
+                    <input 
+                        v-model="formData.username"
+                        type="email" 
+                        placeholder="Email"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        :class="{ 'border-red-500': errors.username }"
+                    />
+                    <p v-if="errors.username" class="text-red-500 text-sm mt-1">{{ errors.username }}</p>
                 </div>
-                <div class="mb-3">
-                    <InputText name="password" type="password" placeholder="Mật khẩu" fluid
-                        :formControl="{ validateOnValueUpdate: true }" />
-                    <Message v-if="$form.password?.invalid" severity="error" size="small" variant="simple">
-                        {{ $form.password.error.message }}
-                    </Message>
+                <div>
+                    <input 
+                        v-model="formData.password"
+                        type="password" 
+                        placeholder="Mật khẩu"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        :class="{ 'border-red-500': errors.password }"
+                    />
+                    <p v-if="errors.password" class="text-red-500 text-sm mt-1">{{ errors.password }}</p>
                 </div>
-                <div class="d-flex justify-content-center"><Button type="submit" class="px-5" severity="primary"
-                        label="Submit" /></div>
-
-            </Form>
-            <p class="text-center mt-3">Chưa có tài khoản, <router-link to="/signup">Đăng ký</router-link></p>
+                <div class="flex justify-center">
+                    <button 
+                        type="submit" 
+                        :disabled="isSubmitting"
+                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-8 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        <span v-if="isSubmitting">Đang đăng nhập...</span>
+                        <span v-else>Đăng nhập</span>
+                    </button>
+                </div>
+            </form>
+            <p class="text-center mt-6 text-gray-600">
+                Chưa có tài khoản? 
+                <router-link to="/signup" class="text-blue-600 hover:text-blue-800 font-medium">
+                    Đăng ký
+                </router-link>
+            </p>
         </div>
     </div>
 </template>
 
-
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useToast } from 'primevue/usetoast';
-import { Form } from '@primevue/forms';
-import InputText from 'primevue/inputtext';
-import Message from 'primevue/message';
-import Button from 'primevue/button';
+import { ref, reactive } from 'vue';
 import axios_auth from '@/plugins/axios_auth';
 import router from '@/router';
 
-interface FormValues {
+interface FormData {
     username: string;
     password: string;
 }
 
 interface FormErrors {
-    [key: string]: { message: string }[];
+    username?: string;
+    password?: string;
 }
 
-interface ResolverResult {
-    errors: FormErrors;
-}
-
-const toast = useToast();
-
-const initialValues = ref<FormValues>({
+const formData = reactive<FormData>({
     username: '',
     password: ''
 });
 
-const resolver = (e: { values: Record<string, any> }): ResolverResult => {
-    const values = e.values as FormValues;
-    const errors: FormErrors = {};
+const errors = reactive<FormErrors>({});
+const isSubmitting = ref(false);
 
-    if (!values.username) {
-        errors.username = [{ message: 'Username is required.' }];
+const validateForm = (): boolean => {
+    // Clear previous errors
+    Object.keys(errors).forEach(key => delete errors[key as keyof FormErrors]);
+
+    let isValid = true;
+
+    if (!formData.username.trim()) {
+        errors.username = 'Email là bắt buộc';
+        isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.username)) {
+        errors.username = 'Email không hợp lệ';
+        isValid = false;
     }
 
-    if (!values.password) {
-        errors.password = [{ message: 'Password is required.' }];
+    if (!formData.password.trim()) {
+        errors.password = 'Mật khẩu là bắt buộc';
+        isValid = false;
     }
 
-    return {
-        errors
-    };
+    return isValid;
 };
 
+const onFormSubmit = async () => {
+    if (!validateForm()) {
+        return;
+    }
 
-const onFormSubmit = async (event: any) => {
-    if (event.valid) {
-        const formData = new FormData();
-        formData.append('email', event.states.username.value);
-        formData.append('password', event.states.password.value);
-        try {
-            const login = await axios_auth.post('auth/login', formData)
-            if (login.status === 201) {
-                console.log(login.data.user);
-                localStorage.setItem('userId', login.data.user.id);
-                localStorage.setItem('userName', login.data.user.lastName);
-                router.push('/');
-            }
-        } catch (error: any) {
-            console.log(error.response);
-            console.log(error.response.data.message);
-            if (error.response) {
-                const errorMessage = error.response.data.message || 'Đăng nhập thất bại';
-                toast.add({ severity: 'error', summary: 'Lỗi', detail: errorMessage, life: 3000 });
-            } else {
-                toast.add({ severity: 'error', summary: 'Lỗi', detail: 'Đã xảy ra lỗi không xác định', life: 3000 });
-            }
+    isSubmitting.value = true;
+
+    try {
+        const formDataToSend = new FormData();
+        formDataToSend.append('email', formData.username);
+        formDataToSend.append('password', formData.password);
+
+        const login = await axios_auth.post('auth/login', formDataToSend);
+        
+        if (login.status === 201) {
+            console.log(login.data.user);
+            localStorage.setItem('userData', JSON.stringify(login.data.user)); 
+            router.push('/');
         }
-
+    } catch (error: any) {
+        console.log(error.response);
+        console.log(error.response.data.message);
+        
+        if (error.response) {
+            const errorMessage = error.response.data.message || 'Đăng nhập thất bại';
+            // You can add a toast notification here if needed
+            errors.username = errorMessage;
+        } else {
+            errors.username = 'Đã xảy ra lỗi không xác định';
+        }
+    } finally {
+        isSubmitting.value = false;
     }
 };
-
 </script>
 
 <style scoped>

@@ -1,74 +1,89 @@
 <template>
-    <div class="d-flex align-items-center justify-content-center" style="height: 100vh;">
-        <Toast />
+    <div class="flex items-center justify-center min-h-screen bg-gray-100">
+        <!-- Toast -->
+        <div v-if="toast.show" :class="[
+            'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transition-all duration-300',
+            toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        ]">
+            <div class="flex items-center">
+                <span class="mr-2">{{ toast.type === 'success' ? '✓' : '✗' }}</span>
+                <span>{{ toast.message }}</span>
+            </div>
+        </div>
 
-        <div class="card p-4 shadow-lg bg-white rounded-md" style="width: 50%">
-            <h2 class="text-center">Đăng ký</h2>
-            <Form v-slot="$form" :initialValues="initialValues" :resolver="resolver" :validateOnValueUpdate="false"
-                :validateOnBlur="true" @submit="onFormSubmit" class="flex flex-col gap-4 w-full sm:w-56">
-                <div class="mb-3">
-                    <InputText name="username" type="text" placeholder="Email" fluid />
-                    <Message v-if="$form.username?.invalid" severity="error" size="small" variant="simple">
-                        {{ $form.username.error.message }}
-                    </Message>
-                </div>
-                <div class="mb-3">
-                    <InputText name="password" type="password" placeholder="Mật khẩu" fluid
-                        :formControl="{ validateOnValueUpdate: true }" />
-                    <Message v-if="$form.password?.invalid" severity="error" size="small" variant="simple">
-                        {{ $form.password.error.message }}
-                    </Message>
-                </div>
-                <div class="mb-3">
-                    <InputText name="phone" type="number" placeholder="Số điện thoại" fluid
-                        :formControl="{ validateOnValueUpdate: true }" />
-                    <Message v-if="$form.phone?.invalid" severity="error" size="small" variant="simple">
-                        {{ $form.phone.error.message }}
-                    </Message>
-                </div>
-                <div class="mb-3">
-                    <InputText name="lastName" type="text" placeholder="Họ" fluid
-                        :formControl="{ validateOnValueUpdate: true }" />
-                    <Message v-if="$form.lastName?.invalid" severity="error" size="small" variant="simple">
-                        {{ $form.lastName.error.message }}
-                    </Message>
-                </div>
-                <div class="mb-3">
-                    <InputText name="middleName" type="text" placeholder="Tên đệm" fluid
-                        :formControl="{ validateOnValueUpdate: true }" />
-                    <Message v-if="$form.middleName?.invalid" severity="error" size="small" variant="simple">
-                        {{ $form.middleName.error.message }}
-                    </Message>
-                </div>
-                <div class="mb-3">
-                    <InputText name="firstName" type="text" placeholder="Tên" fluid
-                        :formControl="{ validateOnValueUpdate: true }" />
-                    <Message v-if="$form.firstName?.invalid" severity="error" size="small" variant="simple">
-                        {{ $form.firstName.error.message }}
-                    </Message>
-                </div>
-                <input type="file" id="file" name="file" @change="onAdvancedUpload" class="hidden" accept="image/*" />
-                <div class="d-flex justify-content-center"><Button type="submit" class="px-5" severity="primary"
-                        label="Submit" /></div>
+        <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Đăng ký</h2>
 
-            </Form>
+            <form @submit.prevent="onFormSubmit" class="space-y-4">
+                <div>
+                    <input v-model="formData.username" type="email" placeholder="Email"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        :class="{ 'border-red-500': errors.username }" />
+                    <p v-if="errors.username" class="text-red-500 text-sm mt-1">{{ errors.username }}</p>
+                </div>
 
-            <p class="text-center mt-3">Chưa có tài khoản, <router-link to="/login">Đăng nhập</router-link></p>
+                <div>
+                    <input v-model="formData.password" type="password" placeholder="Mật khẩu"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        :class="{ 'border-red-500': errors.password }" />
+                    <p v-if="errors.password" class="text-red-500 text-sm mt-1">{{ errors.password }}</p>
+                </div>
+
+                <div>
+                    <input v-model="formData.phone" type="tel" placeholder="Số điện thoại"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        :class="{ 'border-red-500': errors.phone }" />
+                    <p v-if="errors.phone" class="text-red-500 text-sm mt-1">{{ errors.phone }}</p>
+                </div>
+
+                <div>
+                    <input v-model="formData.lastName" type="text" placeholder="Họ"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        :class="{ 'border-red-500': errors.lastName }" />
+                    <p v-if="errors.lastName" class="text-red-500 text-sm mt-1">{{ errors.lastName }}</p>
+                </div>
+
+                <div>
+                    <input v-model="formData.middleName" type="text" placeholder="Tên đệm"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        :class="{ 'border-red-500': errors.middleName }" />
+                    <p v-if="errors.middleName" class="text-red-500 text-sm mt-1">{{ errors.middleName }}</p>
+                </div>
+
+                <div>
+                    <input v-model="formData.firstName" type="text" placeholder="Tên"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        :class="{ 'border-red-500': errors.firstName }" />
+                    <p v-if="errors.firstName" class="text-red-500 text-sm mt-1">{{ errors.firstName }}</p>
+                </div>
+
+                <div>
+                    <input type="file" @change="onAdvancedUpload" accept="image/*"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" :disabled="isLoading"
+                        class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                        <span v-if="isLoading">Đang xử lý...</span>
+                        <span v-else>Đăng ký</span>
+                    </button>
+                </div>
+            </form>
+
+            <p class="text-center mt-6 text-gray-600">
+                Đã có tài khoản?
+                <router-link to="/login" class="text-blue-600 hover:text-blue-800 font-semibold">Đăng nhập</router-link>
+            </p>
         </div>
     </div>
 </template>
 
-
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useToast } from 'primevue/usetoast';
-import { Form } from '@primevue/forms';
-import InputText from 'primevue/inputtext';
-import Message from 'primevue/message';
-import Button from 'primevue/button';
+import { ref, reactive } from 'vue';
 import axios from '@/plugins/axios_auth';
 
-interface FormValues {
+interface FormData {
     username: string;
     password: string;
     phone: string;
@@ -78,18 +93,7 @@ interface FormValues {
     avatar: File | null;
 }
 
-interface FormErrors {
-    [key: string]: { message: string }[];
-}
-
-interface ResolverResult {
-    errors: FormErrors;
-}
-
-
-const toast = useToast();
-
-const initialValues = ref<FormValues>({
+const formData = reactive<FormData>({
     username: '',
     password: '',
     phone: '',
@@ -98,76 +102,115 @@ const initialValues = ref<FormValues>({
     middleName: '',
     avatar: null
 });
-const resolver = (e: { values: Record<string, any> }): ResolverResult => {
-    const values = e.values as FormValues;
-    const errors: FormErrors = {};
 
-    if (!values.username) {
-        errors.username = [{ message: 'Username is required.' }];
-    }
+const errors = reactive<Record<string, string>>({});
+const isLoading = ref(false);
 
-    if (!values.password) {
-        errors.password = [{ message: 'Password is required.' }];
-    }
+const toast = reactive({
+    show: false,
+    message: '',
+    type: 'success' as 'success' | 'error'
+});
 
-    return {
-        errors
-    };
+const showToast = (message: string, type: 'success' | 'error') => {
+    toast.message = message;
+    toast.type = type;
+    toast.show = true;
+
+    setTimeout(() => {
+        toast.show = false;
+    }, 3000);
 };
 
+const validateForm = (): boolean => {
+    // Clear previous errors
+    Object.keys(errors).forEach(key => delete errors[key]);
 
-const onFormSubmit = (event: any) => {
-    if (event.valid) {
-        console.log(event);
-        const formData = new FormData();
-        const values = event.states;
-        formData.append('email', values.username.value);
-        formData.append('password', values.password.value);
-        formData.append('phone', values.phone.value);
-        formData.append('firstName', values.firstName.value);
-        formData.append('lastName', values.lastName.value);
-        formData.append('middleName', values.middleName.value);
-        // formData.append('file', initialValues.value.avatar as File); // Cast to any to avoid type error
+    let isValid = true;
 
-        if (initialValues.value.avatar) {
-            formData.append('file', initialValues.value.avatar);
+    if (!formData.username) {
+        errors.username = 'Email là bắt buộc';
+        isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(formData.username)) {
+        errors.username = 'Email không hợp lệ';
+        isValid = false;
+    }
+
+    if (!formData.password) {
+        errors.password = 'Mật khẩu là bắt buộc';
+        isValid = false;
+    } else if (formData.password.length < 6) {
+        errors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+        isValid = false;
+    }
+
+    if (!formData.phone) {
+        errors.phone = 'Số điện thoại là bắt buộc';
+        isValid = false;
+    }
+
+    if (!formData.firstName) {
+        errors.firstName = 'Tên là bắt buộc';
+        isValid = false;
+    }
+
+    if (!formData.lastName) {
+        errors.lastName = 'Họ là bắt buộc';
+        isValid = false;
+    }
+
+    return isValid;
+};
+
+const onFormSubmit = async () => {
+    if (!validateForm()) {
+        showToast('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
+        return;
+    }
+
+    isLoading.value = true;
+
+    try {
+        const formDataToSend = new FormData();
+        formDataToSend.append('email', formData.username);
+        formDataToSend.append('password', formData.password);
+        formDataToSend.append('phone', formData.phone);
+        formDataToSend.append('firstName', formData.firstName);
+        formDataToSend.append('lastName', formData.lastName);
+        formDataToSend.append('middleName', formData.middleName);
+
+        if (formData.avatar) {
+            formDataToSend.append('file', formData.avatar);
         }
-        for (const [key, value] of formData.entries()) {
-            console.log(`${key}:`, value);
-        }
 
-
-        axios.post('auth/register', formData, {
+        const response = await axios.post('auth/register', formDataToSend, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
-        })
-            .then((response) => {
-                if (response.status === 201) {
-                    toast.add({ severity: 'success', summary: 'Success', detail: 'Registration successful.' });
-                    setTimeout(() => {
-                        window.location.href = '/login';
-                    }, 2000);
-                } else {
-                    toast.add({ severity: 'error', summary: 'Error', detail: 'Registration failed.' });
-                }
-            })
-            .catch((error) => {
-                console.error(error);
-                toast.add({ severity: 'error', summary: 'Error', detail: 'Registration failed.' });
-            });
-    } else {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Please fill in all required fields.' });
+        });
+
+        if (response.status === 201) {
+            showToast('Đăng ký thành công!', 'success');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+        } else {
+            showToast('Đăng ký thất bại', 'error');
+        }
+    } catch (error) {
+        console.error(error);
+        showToast('Đăng ký thất bại', 'error');
+    } finally {
+        isLoading.value = false;
     }
 };
 
 const onAdvancedUpload = (event: Event) => {
     const target = event.target as HTMLInputElement;
-    const files = target.files?.[0];
+    const file = target.files?.[0];
 
-    if (files) {
-        initialValues.value.avatar = files;
+    if (file) {
+        formData.avatar = file;
     }
 };
-
 </script>
