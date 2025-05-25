@@ -2,7 +2,7 @@
 import type { Ref } from "vue";
 
 import useStore from "@/stores/store";
-import { computed, provide, ref, watch } from "vue";
+import { computed, onMounted, provide, ref, watch } from "vue";
 
 import { getActiveConversationId } from "@/utils";
 
@@ -10,7 +10,10 @@ import NoChatSelected from "@/components/states/empty-states/NoChatSelected.vue"
 import Spinner from "@/components/states/loading-states/Spinner.vue";
 import ChatBottom from "@/components/views/HomeView/Chat/ChatBottom/ChatBottom.vue";
 import ChatMiddle from "@/components/views/HomeView/Chat/ChatMiddle/ChatMiddle.vue";
+import ChatTyping from "@/components/views/HomeView/Chat/ChatMiddle/ChatTyping.vue";
 import ChatTop from "@/components/views/HomeView/Chat/ChatTop/ChatTop.vue";
+
+import socket from "@/plugins/socket";
 
 const store = useStore();
 
@@ -28,6 +31,8 @@ const activeConversation = computed(() => {
         );
     }
 });
+
+const activeConversationId = getActiveConversationId();
 
 // provide the active conversation to all children.
 provide("activeConversation", activeConversation.value);
@@ -92,6 +97,20 @@ const handleCloseSelect = () => {
     selectAll.value = false;
     selectedMessages.value = [];
 };
+
+const join_room = () => {
+    // if (socket.connected) {
+    if (activeConversationId) {
+        // console.log(activeConversationId);
+        socket.emit('join_room', { conversationId: String(activeConversationId) });
+    }
+    // }
+}
+
+
+onMounted(() => {
+    join_room()
+});
 </script>
 
 <template>
@@ -102,6 +121,8 @@ const handleCloseSelect = () => {
             :handle-deselect-all="handleDeselectAll" :handle-close-select="handleCloseSelect" />
         <ChatMiddle :selected-messages="selectedMessages" :handle-select-message="handleSelectMessage"
             :handle-deselect-message="handleDeselectMessage" />
+        <ChatTyping v-if="store.isTyping" />
+
         <ChatBottom />
     </div>
 

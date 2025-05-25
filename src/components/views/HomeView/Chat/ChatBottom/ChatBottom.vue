@@ -4,7 +4,7 @@ import type { IConversation } from "@/types";
 
 import useStore from "@/stores/store";
 import { ref, inject, onMounted } from "vue";
-import { getConversationIndex } from "@/utils";
+import { getActiveConversationId, getConversationIndex } from "@/utils";
 
 import {
     CheckIcon,
@@ -21,8 +21,11 @@ import ScaleTransition from "@/components/ui/transitions/ScaleTransition.vue";
 import ReplyMessage from "@/components/views/HomeView/Chat/ChatBottom/ReplyMessage.vue";
 import EmojiPicker from "@/components/ui/inputs/EmojiPicker/EmojiPicker.vue";
 import Textarea from "@/components/ui/inputs/Textarea.vue";
+import socket from "@/plugins/socket";
 
 const store = useStore();
+
+const activeConversationId = getActiveConversationId();
 
 const activeConversation = <IConversation>inject("activeConversation");
 
@@ -69,10 +72,42 @@ const handleSetDraft = () => {
     if (index !== undefined) {
         store.conversations[index].draftMessage = value.value;
     }
+    socket.emit('typing', {
+        senderId: store.user?.id,
+        conversationId: String(activeConversationId),
+    });
 };
+
+// const typing = () => {
+//     // console.log("Received typing event:");
+//     socket.off('typing');
+//     socket.on('typing2', (data) => {
+//         console.log("Received typing event:", data);
+//         console.log("objectffff");
+//         if (data.conversationId == activeConversationId && data.senderId != store.user?.id) {
+//             store.isTyping = true;
+
+//             setTimeout(() => {
+//                 store.isTyping = false;
+//             }, 3000); // tự ẩn sau 3s
+//         }
+//     });
+// };
 
 onMounted(() => {
     value.value = activeConversation.draftMessage;
+    socket.on('typing', (data) => {
+        // console.log('Received typing', data);
+        if (
+            data.conversationId == activeConversationId &&
+            data.senderId != store.user?.id
+        ) {
+            store.isTyping = true;
+            setTimeout(() => {
+                store.isTyping = false;
+            }, 3000);
+        }
+    });
 });
 </script>
 

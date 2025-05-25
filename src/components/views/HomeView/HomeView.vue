@@ -5,23 +5,65 @@ import FadeTransition from "@/components/ui/transitions/FadeTransition.vue";
 import Navigation from "@/components/views/HomeView/Navigation/Navigation.vue";
 import Sidebar from "@/components/views/HomeView/Sidebar/Sidebar.vue";
 import { getActiveConversationId } from "@/utils";
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref, type Ref } from "vue";
+import type { IUser } from "@/types";
+import socket from "@/plugins/socket";
 
 const activeConversationId = computed(() => {
     return getActiveConversationId();
 });
 
+const da = ref(false);
+const localUser = JSON.parse(localStorage.getItem("userData") || "");
+
+
+const user: Ref<IUser> = ref({
+    id: Number(localUser.id),
+    firstName: localUser.firstName || "null",
+    lastName: localUser.lastName || "null",
+    email: localUser.email || "null",
+    avatar: "null",
+    token: "null",
+    lastSeen: new Date(),
+    contacts: [{
+        id: 9,
+        firstName: "string",
+        lastName: "string",
+        avatar: "string",
+        email: "string",
+        lastSeen: new Date(),
+    },]
+});
+
 const store = useStore();
 
-onMounted(() => {
+const join_user_room = () => {
+    if (socket.connected) {
+        socket.emit("joinUserRoom", { userId: (user.value.id) });
+    }
+}
 
+onMounted(async () => {
+    await store.fetchConversations();
+    // console.log(store.conversations);
+
+    store.$patch({
+        status: "success",
+        user: user.value,
+        // conversations: request.data.conversations,
+        // notifications: request.data.notifications,
+        // archivedConversations: request.data.archivedConversations,
+    });
+
+    store.delayLoading = false;
+    join_user_room();
 });
 
 
 </script>
 
 <template>
-    <KeepAlive>
+    <KeepAlive v-if="!store.delayLoading">
         <div class="xs:relative md:static h-full flex xs:flex-col md:flex-row overflow-hidden">
             <!--navigation-bar-->
             <Navigation class="xs:order-1 md:order-none" />

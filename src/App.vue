@@ -1,5 +1,5 @@
 <template>
-    <div :class="{ dark: store.settings.darkMode }" v-if="!store.delayLoading">
+    <div :class="{ dark: store.settings.darkMode }">
         <div class="bg-white dark:bg-gray-800 transition-colors duration-500" :style="{ height: height }">
             <router-view v-slot="{ Component }">
                 <FadeTransition>
@@ -22,27 +22,7 @@ import FadeTransition from "@/components/ui/transitions/FadeTransition.vue";
 // import type { IConversation } from "@/types";
 
 const store = useStore();
-const da = ref(false);
-const localUser = JSON.parse(localStorage.getItem("userData") || "");
 
-
-const user: Ref<IUser> = ref({
-    id: Number(localUser.id),
-    firstName: localUser.firstName || "null",
-    lastName: localUser.lastName || "null",
-    email: localUser.email || "null",
-    avatar: "null",
-    token: "null",
-    lastSeen: new Date(),
-    contacts: [{
-        id: 9,
-        firstName: "string",
-        lastName: "string",
-        avatar: "string",
-        email: "string",
-        lastSeen: new Date(),
-    },]
-});
 
 // update localStorage with state changes
 store.$subscribe((_mutation, state) => {
@@ -51,24 +31,7 @@ store.$subscribe((_mutation, state) => {
 
 // here we load the data from the server.
 onMounted(async () => {
-    store.status = "loading";
-    // store.delayLoading = false;
-    // console.log(store.delayLoading);
-
-    // const request = await fetchData();
-    await store.fetchConversations();
-    console.log(store.conversations);
-
-    store.$patch({
-        status: "success",
-        user: user.value,
-        // conversations: request.data.conversations,
-        // notifications: request.data.notifications,
-        // archivedConversations: request.data.archivedConversations,
-    });
-
-    store.delayLoading = false;
-    // console.log(store.delayLoading);
+    // store.status = "loading";
 });
 
 // the app height

@@ -41,6 +41,9 @@ const useStore = defineStore('chat', () => {
   const callMinimized = ref(false)
   const openVoiceCall = ref(false)
 
+  //socket status
+  const isTyping = ref(false)
+
   // contacts grouped alphabetically.
   const contactGroups: Ref<IContactGroup[] | undefined> = computed(() => {
     if (user.value) {
@@ -86,10 +89,10 @@ const useStore = defineStore('chat', () => {
         conversations.value = response.data.map((conversation: any): IConversation => {
           return {
             id: conversation.id,
-            type: conversation.type || 'chat',
+            type: conversation.type || 'group',
             name: conversation.name || 'undefined',
             avatar:
-              conversation.avatar ||
+              conversation.avatars ||
               'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
             admins: conversation.admins || undefined,
             contacts:
@@ -99,7 +102,7 @@ const useStore = defineStore('chat', () => {
                   firstName: contact.users.firstName || '',
                   lastName: contact.users.lastName || '',
                   avatar:
-                    contact.avatar ||
+                    contact.avatars ||
                     'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
                   email: contact.email || '',
                   lastSeen: contact.lastSeen || new Date(),
@@ -172,6 +175,9 @@ const useStore = defineStore('chat', () => {
 
     //fetch
     fetchConversations,
+
+    //socket status
+    isTyping,
   }
 })
 
