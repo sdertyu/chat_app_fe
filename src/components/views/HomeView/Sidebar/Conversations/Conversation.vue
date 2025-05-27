@@ -27,6 +27,8 @@ const props = defineProps<{
     conversation: IConversation;
 }>();
 
+const activeConversationId = getActiveConversationId();
+
 const store = useStore();
 
 const showContextMenu = ref(false);
@@ -123,7 +125,7 @@ const isActive = computed(
                         <!--draft Message-->
                         <p v-if="
                             props.conversation.draftMessage &&
-                            props.conversation.id !== getActiveConversationId()
+                            props.conversation.id !== activeConversationId
                         " class="body-2 flex justify-start items-center text-red-400">
                             draft: {{ shorten(props.conversation.draftMessage) }}
                         </p>

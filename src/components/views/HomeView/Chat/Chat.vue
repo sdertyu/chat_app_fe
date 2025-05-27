@@ -1,116 +1,163 @@
 <script setup lang="ts">
-import type { Ref } from "vue";
+import type { Ref } from 'vue'
 
-import useStore from "@/stores/store";
-import { computed, onMounted, provide, ref, watch } from "vue";
+import useStore from '@/stores/store'
+import { computed, onMounted, provide, ref, watch, nextTick } from 'vue'
 
-import { getActiveConversationId } from "@/utils";
+import { getActiveConversationId } from '@/utils'
 
-import NoChatSelected from "@/components/states/empty-states/NoChatSelected.vue";
-import Spinner from "@/components/states/loading-states/Spinner.vue";
-import ChatBottom from "@/components/views/HomeView/Chat/ChatBottom/ChatBottom.vue";
-import ChatMiddle from "@/components/views/HomeView/Chat/ChatMiddle/ChatMiddle.vue";
-import ChatTyping from "@/components/views/HomeView/Chat/ChatMiddle/ChatTyping.vue";
-import ChatTop from "@/components/views/HomeView/Chat/ChatTop/ChatTop.vue";
+import NoChatSelected from '@/components/states/empty-states/NoChatSelected.vue'
+import Spinner from '@/components/states/loading-states/Spinner.vue'
+import ChatBottom from '@/components/views/HomeView/Chat/ChatBottom/ChatBottom.vue'
+import ChatMiddle from '@/components/views/HomeView/Chat/ChatMiddle/ChatMiddle.vue'
+import ChatTyping from '@/components/views/HomeView/Chat/ChatMiddle/ChatTyping.vue'
+import ChatTop from '@/components/views/HomeView/Chat/ChatTop/ChatTop.vue'
 
-import socket from "@/plugins/socket";
+import socket from '@/plugins/socket'
+import axios from '@/plugins/axios'
 
-const store = useStore();
+// Tạo ref cho ChatMiddle component
+const chatMiddleRef = ref()
+
+const store = useStore()
 
 // search the selected conversation using activeConversationId.
 const activeConversation = computed(() => {
     let activeConversation = store.conversations.find(
         (conversation) => conversation.id === getActiveConversationId(),
-    );
+    )
 
     if (activeConversation) {
-        return activeConversation;
+        return activeConversation
     } else {
         return store.archivedConversations.find(
             (conversation) => conversation.id === getActiveConversationId(),
-        );
+        )
     }
-});
+})
 
-const activeConversationId = getActiveConversationId();
+const activeConversationId = getActiveConversationId()
 
 // provide the active conversation to all children.
-provide("activeConversation", activeConversation.value);
+provide('activeConversation', activeConversation.value)
 
 // determines whether select mode is enabled.
-const selectMode = ref(false);
+const selectMode = ref(false)
 
 // determines whether all the messages are selected or not.
-const selectAll = ref(false);
+const selectAll = ref(false)
 
 // holds the selected conversations.
-const selectedMessages: Ref<number[]> = ref([]);
+const selectedMessages: Ref<number[]> = ref([])
 
 // (event) add message to select messages.
 const handleSelectMessage = (messageId: number) => {
-    selectedMessages.value.push(messageId);
+    selectedMessages.value.push(messageId)
 
     if (
         activeConversation.value &&
         selectedMessages.value.length === activeConversation.value.messages.length
     ) {
-        selectAll.value = true;
+        selectAll.value = true
     }
 
     if (!selectMode.value) {
-        selectMode.value = true;
+        selectMode.value = true
     }
-};
+}
 
 // (event) remove message from select messages.
 const handleDeselectMessage = (messageId: number) => {
-    selectAll.value = false;
-    selectedMessages.value = selectedMessages.value.filter(
-        (item) => item !== messageId,
-    );
+    selectAll.value = false
+    selectedMessages.value = selectedMessages.value.filter((item) => item !== messageId)
 
     if (activeConversation.value && selectedMessages.value.length === 0) {
-        selectMode.value = false;
+        selectMode.value = false
     }
-};
+}
 
 // (event) select all messages.
 const handleSelectAll = () => {
     if (activeConversation.value) {
-        const messages = activeConversation.value.messages.map(
-            (message) => message.id,
-        );
-        selectedMessages.value = messages;
-        selectAll.value = true;
+        const messages = activeConversation.value.messages.map((message) => message.id)
+        selectedMessages.value = messages
+        selectAll.value = true
     }
-};
+}
 
 // (event) remove the selected messages.
 const handleDeselectAll = () => {
-    selectAll.value = false;
-    selectedMessages.value = [];
-};
+    selectAll.value = false
+    selectedMessages.value = []
+}
 
 // (event handle close Select)
 const handleCloseSelect = () => {
-    selectMode.value = false;
-    selectAll.value = false;
-    selectedMessages.value = [];
-};
+    selectMode.value = false
+    selectAll.value = false
+    selectedMessages.value = []
+}
 
 const join_room = () => {
     // if (socket.connected) {
     if (activeConversationId) {
         // console.log(activeConversationId);
-        socket.emit('join_room', { conversationId: String(activeConversationId) });
+        socket.emit('join_room', { conversationId: String(activeConversationId) })
     }
     // }
 }
 
+const scrollToBottom = () => {
+    if (chatMiddleRef.value && chatMiddleRef.value.scrollToBottom) {
+        chatMiddleRef.value.scrollToBottom()
+    }
+}
 
 onMounted(() => {
     join_room()
-});
+    socket.on('receive_message', async (message) => {
+        const chat = store.conversations.find((c) => c.id == message.conversationId)
+        if (chat) {
+            // if (message.senderId != store.user?.id) {
+            //     chat.messages
+            // }
+            chat.messages.push({
+                id: message.id,
+                type: 'text',
+                content: message.content,
+                date: message.createdAt,
+                sender: {
+                    id: message.senderId,
+                    firstName: 'string',
+                    lastName: 'string',
+                    avatar: 'string',
+                    email: 'string',
+                    lastSeen: new Date(),
+                },
+                // replyTo?: number,
+                // previewData?: IPreviewData,
+                // attachments?: IAttachment[],
+                state: 'unread',
+            })
+
+            store.isTyping = false
+            nextTick(() => {
+                scrollToBottom()
+            })
+        } else {
+            try {
+                const newChat = await axios.get(`/chat/conversations/${message.conversationId}`)
+                if (newChat.status === 200) {
+                    const chatData = newChat.data
+                    store.addConversation(chatData)
+                }
+            } catch (error) {
+                console.error('Error fetching chat:', error)
+            }
+        }
+        console.log(message)
+    })
+})
 </script>
 
 <template>
@@ -119,7 +166,7 @@ onMounted(() => {
     <div v-else-if="getActiveConversationId() && activeConversation" class="h-full flex flex-col scrollbar-hidden">
         <ChatTop :select-all="selectAll" :select-mode="selectMode" :handle-select-all="handleSelectAll"
             :handle-deselect-all="handleDeselectAll" :handle-close-select="handleCloseSelect" />
-        <ChatMiddle :selected-messages="selectedMessages" :handle-select-message="handleSelectMessage"
+        <ChatMiddle ref="chatMiddleRef" :selected-messages="selectedMessages" :handle-select-message="handleSelectMessage"
             :handle-deselect-message="handleDeselectMessage" />
         <ChatTyping v-if="store.isTyping" />
 

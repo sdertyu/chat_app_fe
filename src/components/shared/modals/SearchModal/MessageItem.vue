@@ -22,6 +22,7 @@ const props = defineProps<{
             <div class="flex flex-col items-start">
                 <p class="heading-2 text-black/70 dark:text-white/70 mb-4">
                     {{ getFullName(props.message.sender) }}
+                    
                 </p>
 
                 <p class="body-2 text-black/70 dark:text-white/70">Wow really cool</p>

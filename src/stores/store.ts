@@ -87,42 +87,59 @@ const useStore = defineStore('chat', () => {
       const response = await axios.get('/chat/conversations')
       if (response.status === 200) {
         conversations.value = response.data.map((conversation: any): IConversation => {
+          console.log(conversation)
           return {
             id: conversation.id,
             type: conversation.type || 'group',
             name: conversation.name || 'undefined',
             avatar:
-              conversation.avatars ||
+              conversation.avatar ||
               'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
             admins: conversation.admins || undefined,
             contacts:
               conversation.participants.map((contact: any) => {
                 return {
-                  id: contact.id,
+                  id: contact.usersId,
                   firstName: contact.users.firstName || '',
                   lastName: contact.users.lastName || '',
-                  avatar:
-                    contact.avatars ||
-                    'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+                  avatar: contact.users.avatarUrl,
                   email: contact.email || '',
                   lastSeen: contact.lastSeen || new Date(),
+                  lastReadMessageId: contact.lastReadMessageId,
                 }
               }) || [],
             messages:
               conversation.messages?.map((message: any) => {
+                const senderParticipant = conversation.participants?.find(
+                  (participant: any) => participant.usersId === message.senderId,
+                )
+
                 return {
                   id: message.id,
                   type: message.type || 'text',
                   content: message.content || '',
-                  date: message.createdAt || new Date().toISOString(),
-                  sender: {
-                    id: message.sender?.id || message.senderId,
-                    firstName: message.sender?.firstName || '',
-                    lastName: message.sender?.lastName || '',
-                    avatar: message.sender?.avatar || '',
-                    email: message.sender?.email || '',
-                    lastSeen: message.sender?.lastSeen || new Date(),
-                  },
+                  date: message.createdAt,
+                  sender: senderParticipant
+                    ? {
+                        id: senderParticipant.usersId,
+                        firstName: senderParticipant.users?.firstName || 'Unknown',
+                        lastName: senderParticipant.users?.lastName || '',
+                        avatar:
+                          senderParticipant.users?.avatarUrl ||
+                          'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+                        email: senderParticipant.users?.email || '',
+                        lastSeen: new Date(),
+                      }
+                    : {
+                        // Fallback nếu không tìm thấy sender
+                        id: message.senderId || 0,
+                        firstName: 'Unknown',
+                        lastName: '',
+                        avatar:
+                          'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+                        email: '',
+                        lastSeen: new Date(),
+                      },
                   replyTo: message.replyTo || undefined,
                   previewData: message.previewData || undefined,
                   attachments: message.attachments || undefined,
@@ -147,6 +164,57 @@ const useStore = defineStore('chat', () => {
         delayLoading.value = false
       }, 500)
     }
+  }
+
+  const addConversation = (conversation: any) => {
+    conversations.value.push({
+      id: conversation.id,
+      type: conversation.type || 'group',
+      name: conversation.name || 'undefined',
+      avatar:
+        conversation.avatars ||
+        'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+      admins: conversation.admins || undefined,
+      contacts:
+        conversation.participants.map((contact: any) => {
+          return {
+            id: contact.id,
+            firstName: contact.users.firstName || '',
+            lastName: contact.users.lastName || '',
+            avatar:
+              contact.avatars ||
+              'https://tamkytourism.com/wp-content/uploads/2025/02/avatar-vo-tri-9.jpg',
+            email: contact.email || '',
+            lastSeen: contact.lastSeen || new Date(),
+          }
+        }) || [],
+      messages:
+        conversation.messages?.map((message: any) => {
+          return {
+            id: message.id,
+            type: message.type || 'text',
+            content: message.content || '',
+            date: message.createdAt || new Date().toISOString(),
+            sender: {
+              id: message.sender?.id || message.senderId,
+              firstName: message.sender?.firstName || '',
+              lastName: message.sender?.lastName || '',
+              avatar: message.sender?.avatar || '',
+              email: message.sender?.email || '',
+              lastSeen: message.sender?.lastSeen || new Date(),
+            },
+            replyTo: message.replyTo || undefined,
+            previewData: message.previewData || undefined,
+            attachments: message.attachments || undefined,
+            state: message.state || 'sent',
+          }
+        }) || [],
+      pinnedMessage: conversation.pinnedMessage || undefined,
+      pinnedMessageHidden: conversation.pinnedMessageHidden || false,
+      replyMessage: conversation.replyMessage || undefined,
+      unread: conversation.unread || 0,
+      draftMessage: conversation.draftMessage || '',
+    })
   }
 
   return {
@@ -174,6 +242,7 @@ const useStore = defineStore('chat', () => {
     openVoiceCall,
 
     //fetch
+    addConversation,
     fetchConversations,
 
     //socket status

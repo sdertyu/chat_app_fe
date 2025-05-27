@@ -47,13 +47,15 @@ onMounted(async () => {
     await store.fetchConversations();
     // console.log(store.conversations);
 
-    store.$patch({
-        status: "success",
-        user: user.value,
-        // conversations: request.data.conversations,
-        // notifications: request.data.notifications,
-        // archivedConversations: request.data.archivedConversations,
-    });
+    // store.$patch({
+    //     status: "success",
+    //     user: user.value,
+    //     // conversations: request.data.conversations,
+    //     // notifications: request.data.notifications,
+    //     // archivedConversations: request.data.archivedConversations,
+    // });
+    store.status = "success";
+    store.user = user.value;
 
     store.delayLoading = false;
     join_user_room();

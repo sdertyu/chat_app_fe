@@ -15,7 +15,8 @@ export interface IContact {
   lastName: string
   avatar: string
   email: string
-  lastSeen: Date
+  lastSeen: Date,
+  lastReadMessageId?: number
 }
 
 export interface IPreviewData {

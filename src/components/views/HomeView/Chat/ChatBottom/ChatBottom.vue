@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Ref } from "vue";
-import type { IConversation } from "@/types";
+import type { Ref } from 'vue'
+import type { IConversation } from '@/types'
 
-import useStore from "@/stores/store";
-import { ref, inject, onMounted } from "vue";
-import { getActiveConversationId, getConversationIndex } from "@/utils";
+import useStore from '@/stores/store'
+import { ref, inject, onMounted, nextTick } from 'vue'
+import { getActiveConversationId, getConversationIndex } from '@/utils'
 
 import {
     CheckIcon,
@@ -13,70 +13,72 @@ import {
     PaperAirplaneIcon,
     PaperClipIcon,
     XCircleIcon,
-} from "@heroicons/vue/24/outline";
-import AttachmentsModal from "@/components/shared/modals/AttachmentsModal/AttachmentsModal.vue";
-import Button from "@/components/ui/inputs/Button.vue";
-import IconButton from "@/components/ui/inputs/IconButton.vue";
-import ScaleTransition from "@/components/ui/transitions/ScaleTransition.vue";
-import ReplyMessage from "@/components/views/HomeView/Chat/ChatBottom/ReplyMessage.vue";
-import EmojiPicker from "@/components/ui/inputs/EmojiPicker/EmojiPicker.vue";
-import Textarea from "@/components/ui/inputs/Textarea.vue";
-import socket from "@/plugins/socket";
+} from '@heroicons/vue/24/outline'
+import AttachmentsModal from '@/components/shared/modals/AttachmentsModal/AttachmentsModal.vue'
+import Button from '@/components/ui/inputs/Button.vue'
+import IconButton from '@/components/ui/inputs/IconButton.vue'
+import ScaleTransition from '@/components/ui/transitions/ScaleTransition.vue'
+import ReplyMessage from '@/components/views/HomeView/Chat/ChatBottom/ReplyMessage.vue'
+import EmojiPicker from '@/components/ui/inputs/EmojiPicker/EmojiPicker.vue'
+import Textarea from '@/components/ui/inputs/Textarea.vue'
+import socket from '@/plugins/socket'
+import axios from '@/plugins/axios'
 
-const store = useStore();
+const store = useStore()
 
-const activeConversationId = getActiveConversationId();
+const activeConversationId = getActiveConversationId()
 
-const activeConversation = <IConversation>inject("activeConversation");
+const activeConversation = <IConversation>inject('activeConversation')
 
 // the content of the message.
-const value: Ref<string> = ref("");
+const value: Ref<string> = ref('')
 
 // determines whether the app is recording or not.
-const recording = ref(false);
+const recording = ref(false)
 
 // open emoji picker.
-const showPicker = ref(false);
+const showPicker = ref(false)
 
 // open modal used to send multiple attachments attachments.
-const openAttachmentsModal = ref(false);
+const openAttachmentsModal = ref(false)
 
 // start and stop recording.
 const handleToggleRecording = () => {
-    recording.value = !recording.value;
-};
+    recording.value = !recording.value
+}
 
 // stop recording without sending.
 const handleCancelRecording = () => {
-    recording.value = false;
-};
+    recording.value = false
+}
 
 // close picker when you click outside.
 const handleClickOutside = (event: Event) => {
-    let target = event.target as HTMLElement;
-    let parent = target.parentElement as HTMLElement;
+    let target = event.target as HTMLElement
+    let parent = target.parentElement as HTMLElement
 
     if (
         target &&
-        !target.classList.contains("toggle-picker-button") &&
+        !target.classList.contains('toggle-picker-button') &&
         parent &&
-        !parent.classList.contains("toggle-picker-button")
+        !parent.classList.contains('toggle-picker-button')
     ) {
-        showPicker.value = false;
+        showPicker.value = false
     }
-};
+}
 
 // (event) set the draft message equals the content of the text area
 const handleSetDraft = () => {
-    const index = getConversationIndex(activeConversation.id);
+    const index = getConversationIndex(activeConversation.id)
     if (index !== undefined) {
-        store.conversations[index].draftMessage = value.value;
+        store.conversations[index].draftMessage = value.value
     }
+    // console.log(value.value);
     socket.emit('typing', {
         senderId: store.user?.id,
         conversationId: String(activeConversationId),
-    });
-};
+    })
+}
 
 // const typing = () => {
 //     // console.log("Received typing event:");
@@ -94,21 +96,38 @@ const handleSetDraft = () => {
 //     });
 // };
 
+const handleSendMessage = () => {
+    if (value.value.trim() === '') {
+        return
+    }
+
+    // if (activeConversationId !== undefined)
+    //     console.log(store.conversations[activeConversationId].draftMessage);
+    socket.emit('sendMessage', {
+        id: Number(null),
+        senderId: store.user?.id,
+        content: value.value,
+        conversationId: activeConversation.id,
+        createAt: null,
+    })
+
+    nextTick(() => {
+        value.value = ''
+    })
+}
+
 onMounted(() => {
-    value.value = activeConversation.draftMessage;
+    value.value = activeConversation.draftMessage
     socket.on('typing', (data) => {
         // console.log('Received typing', data);
-        if (
-            data.conversationId == activeConversationId &&
-            data.senderId != store.user?.id
-        ) {
-            store.isTyping = true;
+        if (data.conversationId == activeConversationId && data.senderId != store.user?.id) {
+            store.isTyping = true
             setTimeout(() => {
-                store.isTyping = false;
-            }, 3000);
+                store.isTyping = false
+            }, 3000)
         }
-    });
-});
+    })
+})
 </script>
 
 <template>
@@ -136,9 +155,8 @@ onMounted(() => {
             <div class="grow md:mr-5 xs:mr-4 self-end" v-if="!recording">
                 <div class="relative">
                     <Textarea class="max-h-[5rem] pr-12.5 resize-none scrollbar-hidden"
-                        @value-changed="(newValue: string) => (value = newValue)" @input="handleSetDraft" :value="value"
-                        auto-resize cols="30" rows="1" placeholder="Write your message here"
-                        aria-label="Write your message here" />
+                        @update:modelValue="value = $event" @input="handleSetDraft" :value="value" auto-resize cols="30"
+                        rows="1" placeholder="Write your message here" aria-label="Write your message here" />
 
                     <!--emojis-->
                     <div class="absolute bottom-[.8125rem] right-0">
@@ -191,8 +209,9 @@ onMounted(() => {
                 </IconButton>
 
                 <!--send message button-->
-                <IconButton v-if="!recording" class="ic-btn-contained-primary w-7 h-7 active:scale-110"
-                    title="send message" aria-label="send message">
+                <IconButton v-if="!recording" @click="handleSendMessage"
+                    class="ic-btn-contained-primary w-7 h-7 active:scale-110" title="send message"
+                    aria-label="send message">
                     <PaperAirplaneIcon class="w-4.25 h-4.25" />
                 </IconButton>
             </div>
@@ -203,7 +222,7 @@ onMounted(() => {
 </template>
 
 <style>
-input[placeholder="Search emoji"] {
+input[placeholder='Search emoji'] {
     background: rgba(0, 0, 0, 0);
 }
 

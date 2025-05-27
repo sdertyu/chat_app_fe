@@ -18,6 +18,7 @@ import MessageContextMenu from "@/components/views/HomeView/Chat/ChatMiddle/Mess
 import Receipt from "@/components/views/HomeView/Chat/ChatMiddle/Message/Receipt.vue";
 import Recording from "@/components/views/HomeView/Chat/ChatMiddle/Message/Recording.vue";
 import MessagePreview from "@/components/views/HomeView/Chat/MessagePreview.vue";
+import Seen from "@/components/views/HomeView/Chat/ChatMiddle/Message/Seen.vue";
 
 const props = defineProps<{
     message: IMessage;
@@ -25,6 +26,7 @@ const props = defineProps<{
     self: boolean;
     divider?: boolean;
     selected?: boolean;
+    checkLastRead: (message: IMessage) => string[];
     handleSelectMessage: (messageId: number) => void;
     handleDeselectMessage: (messageId: number) => void;
 }>();
@@ -77,6 +79,31 @@ const hideAvatar = () => {
         }
     }
 };
+
+function formatDateSmart(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+
+    const isToday =
+        date.getDate() === now.getDate() &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear();
+
+    if (isToday) {
+        return date.toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    } else {
+        return date.toLocaleDateString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        });
+    }
+}
+
+
 
 // reply message
 const replyMessage = getMessageById(activeConversation, props.message.replyTo);
@@ -145,7 +172,7 @@ const replyMessage = getMessageById(activeConversation, props.message.replyTo);
                 <!--date-->
                 <div :class="props.self ? ['ml-4', 'order-1'] : ['mr-4']">
                     <p class="body-1 text-black/70 dark:text-white/70 whitespace-pre">
-                        {{ props.message.date }}
+                        {{ formatDateSmart(props.message.date) }}
                     </p>
                 </div>
 
@@ -157,5 +184,12 @@ const replyMessage = getMessageById(activeConversation, props.message.replyTo);
             :left="contextMenuCoordinations.x" :top="contextMenuCoordinations.y"
             :handle-close-context-menu="handleCloseContextMenu" :handle-select-message="handleSelectMessage"
             :handle-deselect-message="handleDeselectMessage" />
+
+        <div class="flex justify-end flex-row">
+            <div v-for="(contact, index) in props.checkLastRead(message)" :key="index" class="inline-block me-2">
+                <Seen :avatar="contact" />
+            </div>
+        </div>
+
     </div>
 </template>
