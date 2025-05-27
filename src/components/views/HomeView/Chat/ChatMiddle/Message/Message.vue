@@ -111,6 +111,13 @@ const replyMessage = getMessageById(activeConversation, props.message.replyTo);
 
 <template>
     <div class="select-none">
+        <!--sender name above message bubble-->
+        <div v-if="!props.self && !props.followUp" class="flex mb-2 ms-0" :class="{ 'ml-[2.25rem]': !hideAvatar() }">
+            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 ml-4">
+                {{ getFullName(props.message.sender) }}
+            </p>
+        </div>
+
         <div class="xs:mb-6 md:mb-5 flex" :class="{ 'justify-end': props.self }">
             <!--avatar-->
             <div class="mr-4" :class="{ 'ml-[2.25rem]': props.followUp && !divider }">

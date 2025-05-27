@@ -118,27 +118,27 @@ onMounted(() => {
     socket.on('receive_message', async (message) => {
         const chat = store.conversations.find((c) => c.id == message.conversationId)
         if (chat) {
-            // if (message.senderId != store.user?.id) {
-            //     chat.messages
-            // }
-            chat.messages.push({
-                id: message.id,
-                type: 'text',
-                content: message.content,
-                date: message.createdAt,
-                sender: {
-                    id: message.senderId,
-                    firstName: 'string',
-                    lastName: 'string',
-                    avatar: 'string',
-                    email: 'string',
-                    lastSeen: new Date(),
-                },
-                // replyTo?: number,
-                // previewData?: IPreviewData,
-                // attachments?: IAttachment[],
-                state: 'unread',
-            })
+            const sender = chat.contacts.find((c) => c.id === message.senderId)
+            if (sender)
+                chat.messages.push({
+                    id: message.id,
+                    type: 'text',
+                    content: message.content,
+                    date: message.createdAt,
+                    sender: {
+                        id: sender.id,
+                        firstName: sender.firstName,
+                        lastName: sender.lastName,
+                        avatar: sender.avatar,
+                        email: sender.email,
+                        lastSeen: new Date(),
+                        lastReadMessageId: message.id
+                    },
+                    // replyTo?: number,
+                    // previewData?: IPreviewData,
+                    // attachments?: IAttachment[],
+                    state: 'unread',
+                })
 
             store.isTyping = false
             nextTick(() => {
@@ -166,8 +166,8 @@ onMounted(() => {
     <div v-else-if="getActiveConversationId() && activeConversation" class="h-full flex flex-col scrollbar-hidden">
         <ChatTop :select-all="selectAll" :select-mode="selectMode" :handle-select-all="handleSelectAll"
             :handle-deselect-all="handleDeselectAll" :handle-close-select="handleCloseSelect" />
-        <ChatMiddle ref="chatMiddleRef" :selected-messages="selectedMessages" :handle-select-message="handleSelectMessage"
-            :handle-deselect-message="handleDeselectMessage" />
+        <ChatMiddle ref="chatMiddleRef" :selected-messages="selectedMessages"
+            :handle-select-message="handleSelectMessage" :handle-deselect-message="handleDeselectMessage" />
         <ChatTyping v-if="store.isTyping" />
 
         <ChatBottom />
