@@ -21,13 +21,16 @@ import {
     TrashIcon,
 } from "@heroicons/vue/24/outline";
 import Dropdown from "@/components/ui/navigation/Dropdown/Dropdown.vue";
-import DropdownLink from "@/components/ui/navigation/Dropdown/DropdownLink.vue";
+import { useRoute } from "vue-router";
 
 const props = defineProps<{
     conversation: IConversation;
 }>();
 
-const activeConversationId = getActiveConversationId();
+const route = useRoute();
+const activeConversationId = computed(() =>
+  route.params.id ? Number(route.params.id) : undefined
+);
 
 const store = useStore();
 
@@ -76,9 +79,8 @@ const handleRemoveUnread = () => {
 };
 
 // (computed property) determines if this conversation is active.
-const isActive = computed(
-    () => getActiveConversationId() === props.conversation.id,
-);
+const isActive = computed(() => activeConversationId.value == props.conversation.id);
+
 </script>
 
 <template>

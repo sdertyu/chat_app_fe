@@ -54,7 +54,7 @@ const scrollToBottom = () => {
 
 const checkLastRead = (message: IMessage): string[] => {
     let contact = activeConversation.contacts;
-    console.log(contact);
+
     // console.log(store.user?.id);
     return contact
         .filter(c => c.lastReadMessageId === message.id && c.id !== store.user?.id)

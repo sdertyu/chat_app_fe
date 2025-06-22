@@ -5,6 +5,7 @@ import LoginView from '../views/LoginView.vue'
 // import HomeView from '@/views/HomeView.vue'
 import SignupView from '@/views/SignupView.vue'
 import axios from '@/plugins/axios'
+import { disconnectSocket } from '@/plugins/socket'
 
 import AccessView from '@/components/views/AccessView/AccessView.vue'
 import HomeView from '@/components/views/HomeView/HomeView.vue'
@@ -92,7 +93,13 @@ const router = createRouter({
 // })
 
 router.beforeEach(async (to, from, next) => {
-  if (!to.meta.requiresAuth) return next()
+  if (!to.meta.requiresAuth) {
+    // Nếu không cần auth và đang đi đến trang login/register, disconnect socket
+    if (to.name === 'Access' || to.name === 'login') {
+      disconnectSocket();
+    }
+    return next()
+  }
 
   try {
     await axios.get('/auth/verify-token') // access token còn hạn
@@ -107,6 +114,8 @@ router.beforeEach(async (to, from, next) => {
       return next(localStorage.getItem('redirectAfterLogin') || '/home')
     } catch (err) {
       console.error('Token expired or invalid', err)
+      // Disconnect socket khi logout
+      disconnectSocket();
       return next('/login')
     }
   }

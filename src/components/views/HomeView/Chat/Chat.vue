@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 
 import useStore from '@/stores/store'
-import { computed, onMounted, provide, ref, watch, nextTick } from 'vue'
+import { computed, onMounted, provide, ref, watch, nextTick, onBeforeUnmount } from 'vue'
 
 import { getActiveConversationId } from '@/utils'
 
@@ -10,10 +10,10 @@ import NoChatSelected from '@/components/states/empty-states/NoChatSelected.vue'
 import Spinner from '@/components/states/loading-states/Spinner.vue'
 import ChatBottom from '@/components/views/HomeView/Chat/ChatBottom/ChatBottom.vue'
 import ChatMiddle from '@/components/views/HomeView/Chat/ChatMiddle/ChatMiddle.vue'
-import ChatTyping from '@/components/views/HomeView/Chat/ChatMiddle/ChatTyping.vue'
 import ChatTop from '@/components/views/HomeView/Chat/ChatTop/ChatTop.vue'
+import ChatTyping from '@/components/views/HomeView/Chat/ChatMiddle/ChatTyping.vue'
 
-import socket from '@/plugins/socket'
+import { getSocket } from '@/plugins/socket'
 import axios from '@/plugins/axios'
 
 // Tạo ref cho ChatMiddle component
@@ -99,12 +99,10 @@ const handleCloseSelect = () => {
 }
 
 const join_room = () => {
-    // if (socket.connected) {
-    if (activeConversationId) {
-        // console.log(activeConversationId);
+    const socket = getSocket()
+    if (socket && activeConversationId) {
         socket.emit('join_room', { conversationId: String(activeConversationId) })
     }
-    // }
 }
 
 const scrollToBottom = () => {
@@ -115,48 +113,55 @@ const scrollToBottom = () => {
 
 onMounted(() => {
     join_room()
-    socket.on('receive_message', async (message) => {
-        const chat = store.conversations.find((c) => c.id == message.conversationId)
-        if (chat) {
-            const sender = chat.contacts.find((c) => c.id === message.senderId)
-            if (sender)
-                chat.messages.push({
-                    id: message.id,
-                    type: 'text',
-                    content: message.content,
-                    date: message.createdAt,
-                    sender: {
-                        id: sender.id,
-                        firstName: sender.firstName,
-                        lastName: sender.lastName,
-                        avatar: sender.avatar,
-                        email: sender.email,
-                        lastSeen: new Date(),
-                        lastReadMessageId: message.id
-                    },
-                    // replyTo?: number,
-                    // previewData?: IPreviewData,
-                    // attachments?: IAttachment[],
-                    state: 'unread',
-                })
 
-            store.isTyping = false
-            nextTick(() => {
-                scrollToBottom()
-            })
-        } else {
-            try {
-                const newChat = await axios.get(`/chat/conversations/${message.conversationId}`)
-                if (newChat.status === 200) {
-                    const chatData = newChat.data
-                    store.addConversation(chatData)
+    const socket = getSocket()
+    if (socket) {
+        socket.on('receive_message', async (message) => {
+            const chat = store.conversations.find((c) => c.id == message.conversationId)
+            if (chat) {
+                const sender = chat.contacts.find((c) => c.id === message.senderId)
+                if (sender)
+                    chat.messages.push({
+                        id: message.id,
+                        type: 'text',
+                        content: message.content,
+                        date: message.createdAt,
+                        sender: {
+                            id: sender.id,
+                            firstName: sender.firstName,
+                            lastName: sender.lastName,
+                            avatar: sender.avatar,
+                            email: sender.email,
+                            lastSeen: new Date(),
+                            lastReadMessageId: message.id
+                        },
+                        state: 'unread',
+                    })
+
+                store.isTyping = false
+                nextTick(() => {
+                    scrollToBottom()
+                })
+            } else {
+                try {
+                    const newChat = await axios.get(`/chat/conversations/${message.conversationId}`)
+                    if (newChat.status === 200) {
+                        const chatData = newChat.data
+                        store.addConversation(chatData)
+                    }
+                } catch (error) {
+                    console.error('Error fetching chat:', error)
                 }
-            } catch (error) {
-                console.error('Error fetching chat:', error)
             }
-        }
-        console.log(message)
-    })
+        })
+    }
+})
+
+onBeforeUnmount(() => {
+    const socket = getSocket()
+    if (socket) {
+        socket.off('receive_message')
+    }
 })
 </script>
 

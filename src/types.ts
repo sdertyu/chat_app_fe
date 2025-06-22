@@ -1,3 +1,4 @@
+
 export interface IUser {
   id: number
   firstName: string
@@ -109,4 +110,18 @@ export interface IEmoji {
   u: string
   r?: string
   v?: string[]
+}
+
+export interface ISentMessage {
+  id: Number | null
+  conversationId: string
+  senderId: number
+  content: string
+  createdAt: Date | null
+}
+
+
+export interface ITyping {
+  senderId: number
+  conversationId: string
 }
