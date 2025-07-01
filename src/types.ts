@@ -112,8 +112,8 @@ export interface IEmoji {
   v?: string[]
 }
 
-export interface ISentMessage {
-  id: Number | null
+export interface ISendMessage {
+  id: number | null
   conversationId: string
   senderId: number
   content: string
@@ -124,4 +124,10 @@ export interface ISentMessage {
 export interface ITyping {
   senderId: number
   conversationId: string
+}
+
+export interface IReadMessage {
+  conversationId: string
+  lastMessageId: number
+  userId: number
 }

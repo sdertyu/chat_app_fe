@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-import type { IConversation, ISentMessage, ITyping } from '@/types'
+import type { IConversation, ISendMessage, ITyping } from '@/types'
 
 import useStore from '@/stores/store'
 import { ref, inject, onMounted, nextTick } from 'vue'
@@ -127,7 +127,7 @@ const handleSendMessage = () => {
   //     createAt: null,
   // })
   if (activeConversationId !== undefined) {
-    let typing: ISentMessage = {
+    let typing: ISendMessage = {
       id: null,
       conversationId: activeConversationId.toString(),
       senderId: Number(store.user?.id),

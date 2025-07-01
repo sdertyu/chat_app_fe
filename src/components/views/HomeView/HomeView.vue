@@ -7,7 +7,7 @@ import Sidebar from "@/components/views/HomeView/Sidebar/Sidebar.vue";
 import { getActiveConversationId } from "@/utils";
 import { computed, onMounted, provide, ref, type Ref } from "vue";
 import type { IUser } from "@/types";
-import { getSocket, connectSocket } from '@/plugins/socket'
+import { connectSocket } from '@/plugins/socket'
 
 const activeConversationId = computed(() => {
   return getActiveConversationId();

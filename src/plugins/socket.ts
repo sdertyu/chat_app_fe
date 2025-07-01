@@ -1,4 +1,4 @@
-import type { ISentMessage, ITyping } from '@/types'
+import type { IReadMessage, ISendMessage, ITyping } from '@/types'
 import { io, Socket } from 'socket.io-client'
 
 let socket: Socket | null = null
@@ -21,7 +21,7 @@ export const getSocket = (): Socket | null => {
   return socket
 }
 
-export const sendMessage = (sentMessage: ISentMessage): void => {
+export const sendMessage = (sentMessage: ISendMessage): void => {
   if (socket) {
     socket.emit('sendMessage', sentMessage)
   }
@@ -33,15 +33,37 @@ export const typingEvent = (typing: ITyping) => {
   }
 }
 
-// export const onTypingEvent = (callback: (data: ISentMessage) => void): void => {
+export const receiveMessage = (callback: (data: ISendMessage) => void): void => {
+  console.log("object");
+  if (socket) {
+    socket.on('receive_message', (data: ISendMessage) => {
+      // console.log("receive_message");
+      callback(data)
+    })
+  }
+}
 
-// }
+export const readMessage = (data: IReadMessage) => {
+  if (socket) {
+    socket.emit("read_message", data );
+  }
+}
 
-// Export default để tương thích với code hiện tại
+export const receive_readMessage = (callback: (data: IReadMessage) => void): void => {
+  if (socket) {
+    socket.on('read_message', (data: IReadMessage) => {
+      callback(data)
+    })
+  }
+}
+
 export default {
   connect: connectSocket,
   disconnect: disconnectSocket,
   get: getSocket,
   sendMessage: sendMessage,
   typingEvent: typingEvent,
+  receiveMessage: receiveMessage,
+  readMessage: readMessage,
+  receive_readMessage: receive_readMessage,
 }
